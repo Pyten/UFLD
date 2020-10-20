@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 from model.backbone import resnet
 import numpy as np
 
@@ -15,6 +16,75 @@ class conv_bn_relu(torch.nn.Module):
         x = self.bn(x)
         x = self.relu(x)
         return x
+
+class AtrousSpatialPyramidPoolingModule(torch.nn.Module):
+    """
+    operations performed:
+      1x1 x depth
+      3x3 x depth dilation 6
+      3x3 x depth dilation 12
+      3x3 x depth dilation 18
+      image pooling
+      concatenate all together
+      Final 1x1 conv
+    """
+
+    def __init__(self, in_dim, reduction_dim=256, output_stride=16,
+                 rates=(1, 6, 12, 18)):
+        super(AtrousSpatialPyramidPoolingModule, self).__init__()
+
+        if output_stride == 8:
+            rates = [2 * r for r in rates]
+        elif output_stride == 16:
+            pass
+        else:
+            raise 'output stride of {} not supported'.format(output_stride)
+
+        self.features = []
+        # 1x1
+        self.features.append(
+            torch.nn.Sequential(torch.nn.Conv2d(in_dim, reduction_dim, kernel_size=1,
+                                    bias=False),
+                           torch.nn.BatchNorm2d(reduction_dim), 
+                           torch.nn.ReLU(inplace=True)))
+        # other rates
+        for r in rates:
+            self.features.append(torch.nn.Sequential(
+                torch.nn.Conv2d(in_dim, reduction_dim, kernel_size=3,
+                          dilation=r, padding=r, bias=False),
+                torch.nn.BatchNorm2d(reduction_dim),
+                torch.nn.ReLU(inplace=True)
+            ))
+        self.features = torch.nn.ModuleList(self.features)
+
+        # img level features
+        self.img_avg_pool = torch.nn.Sequential(
+                                                        torch.nn.AdaptiveAvgPool2d(1),
+                                                        torch.nn.Conv2d(in_dim, reduction_dim, kernel_size=1, bias=False),
+                                                        torch.nn.BatchNorm2d(reduction_dim), 
+                                                        torch.nn.ReLU(inplace=True))
+
+        self.img_conv = torch.nn.Sequential(
+                                                        torch.nn.Conv2d(reduction_dim * (len(rates) + 2), reduction_dim, kernel_size=1, bias=False),
+                                                        torch.nn.BatchNorm2d(reduction_dim), 
+                                                        torch.nn.ReLU(inplace=True))
+
+    def forward(self, x):
+        x_size = x.size()
+
+        img_features = self.img_avg_pool(x)
+
+        img_features = F.interpolate(img_features, x_size[2:], mode="nearest")
+        out = img_features
+
+        for f in self.features:
+            y = f(x)
+            out = torch.cat((out, y), 1)
+        
+        out = self.img_conv(out)
+
+        return out
+
 class parsingNet(torch.nn.Module):
     def __init__(self, size=(288, 800), pretrained=True, backbone='50', cls_dim=(37, 10, 4), use_aux=False):
         super(parsingNet, self).__init__()
@@ -28,33 +98,58 @@ class parsingNet(torch.nn.Module):
         self.total_dim = np.prod(cls_dim)
 
         # input : nchw,
-        # output: (w+1) * sample_rows * 4 
+        # output: (w+1) * sample_rows * 4
         self.model = resnet(backbone, pretrained=pretrained)
 
         if self.use_aux:
+            # Pyten-20201010-Addheader1
+            self.aux_header1 = torch.nn.Sequential(
+                conv_bn_relu(320, 256, kernel_size=3, stride=1, padding=1) if backbone in ['34','18'] else conv_bn_relu(512, 256, kernel_size=3, stride=1, padding=1),
+                conv_bn_relu(256,256,3,padding=1) if backbone in ['34','18'] else conv_bn_relu(256, 256, 3, padding=1),
+            )
+
             self.aux_header2 = torch.nn.Sequential(
-                conv_bn_relu(128, 128, kernel_size=3, stride=1, padding=1) if backbone in ['34','18'] else conv_bn_relu(512, 128, kernel_size=3, stride=1, padding=1),
-                conv_bn_relu(128,128,3,padding=1),
-                conv_bn_relu(128,128,3,padding=1),
-                conv_bn_relu(128,128,3,padding=1),
+                conv_bn_relu(384, 256, kernel_size=3, stride=1, padding=1) if backbone in ['34','18'] else conv_bn_relu(1024, 256, kernel_size=3, stride=1, padding=1),
+                conv_bn_relu(256, 256, 3,padding=1) if backbone in ['34','18'] else conv_bn_relu(256, 256, 3, padding=1),
+                # Pyten-20201010-Addheader1
+                # conv_bn_relu(128,128,3,padding=1),
+                # conv_bn_relu(128,128,3,padding=1),
             )
             self.aux_header3 = torch.nn.Sequential(
-                conv_bn_relu(256, 128, kernel_size=3, stride=1, padding=1) if backbone in ['34','18'] else conv_bn_relu(1024, 128, kernel_size=3, stride=1, padding=1),
-                conv_bn_relu(128,128,3,padding=1),
-                conv_bn_relu(128,128,3,padding=1),
+                conv_bn_relu(512, 256, kernel_size=3, stride=1, padding=1) if backbone in ['34','18'] else conv_bn_relu(1536, 512, kernel_size=3, stride=1, padding=1),
+                conv_bn_relu(256,256,3,padding=1) if backbone in ['34','18'] else conv_bn_relu(512, 512, 3, padding=1),
+                # Pyten-20201010-Addheader1
+                # onv_bn_relu(128,128,3,padding=1),
             )
             self.aux_header4 = torch.nn.Sequential(
-                conv_bn_relu(512, 128, kernel_size=3, stride=1, padding=1) if backbone in ['34','18'] else conv_bn_relu(2048, 128, kernel_size=3, stride=1, padding=1),
-                conv_bn_relu(128,128,3,padding=1),
+                conv_bn_relu(512, 256, kernel_size=3, stride=1, padding=1) if backbone in ['34','18'] else conv_bn_relu(2048, 1024, kernel_size=3, stride=1, padding=1),
+                # conv_bn_relu(128,128,3,padding=1),
             )
             self.aux_combine = torch.nn.Sequential(
-                conv_bn_relu(384, 256, 3,padding=2,dilation=2),
+                # Pyten-20201010-Addheader1
+                # conv_bn_relu(384, 256, 3,padding=2,dilation=2),
+                conv_bn_relu(512, 256, 3,padding=2,dilation=2),
                 conv_bn_relu(256, 128, 3,padding=2,dilation=2),
-                conv_bn_relu(128, 128, 3,padding=2,dilation=2),
+                # conv_bn_relu(128, 128, 3,padding=2,dilation=2),
                 conv_bn_relu(128, 128, 3,padding=4,dilation=4),
-                torch.nn.Conv2d(128, cls_dim[-1] + 1,1)
+                #  Pyten-20201010-ChagneClassNum
+                # torch.nn.Conv2d(128, cls_dim[-1] + 1,1)
                 # output : n, num_of_lanes+1, h, w
             )
+
+            #  Pyten-20201010-ChagneClassNum
+            # self.out_layer = conv_bn_relu(128,19,3,padding=1)
+            self.out_layer = torch.nn.Sequential(
+                conv_bn_relu(256, 256, 3,padding=1) if backbone in ['34','18'] else conv_bn_relu(256, 256, 3, padding=1),
+                conv_bn_relu(256, 19, 3,padding=1) if backbone in ['34','18'] else conv_bn_relu(256, 19, 3, padding=1),
+            )
+
+            # Pyten-20201014-AddASPP
+            if backbone in ['34','18']:
+                self.aspp = AtrousSpatialPyramidPoolingModule(256,reduction_dim=256)
+            else:
+                 self.aspp = AtrousSpatialPyramidPoolingModule(1024,reduction_dim=512)
+            
             initialize_weights(self.aux_header2,self.aux_header3,self.aux_header4,self.aux_combine)
 
         self.cls = torch.nn.Sequential(
@@ -73,15 +168,44 @@ class parsingNet(torch.nn.Module):
     def forward(self, x):
         # n c h w - > n 2048 sh sw
         # -> n 2048
-        x2,x3,fea = self.model(x)
+        # Pyten-20201010-ChangeNetStruct
+        # x2, x3, fea = self.model(x)
+        x1, x2, x3, fea = self.model(x)
+
         if self.use_aux:
-            x2 = self.aux_header2(x2)
-            x3 = self.aux_header3(x3)
-            x3 = torch.nn.functional.interpolate(x3,scale_factor = 2,mode='bilinear')
+            # Pyten
+            # x1 = self.aux_header1(x1)
+            # x2 = self.aux_header2(x2)
+            # x2 = torch.nn.functional.interpolate(x2,scale_factor = 2,mode='bilinear')
+            # x3 = self.aux_header3(x3)
+            # x3 = torch.nn.functional.interpolate(x3,scale_factor = 4,mode='bilinear')
+
+            # x4 = self.aux_header4(fea)
+            # x4 = F.interpolate(x4,scale_factor = 8,mode='bilinear')
+
+            # aux_seg = torch.cat([x1,x2,x3,x4],dim=1)
+            # aux_seg = self.aux_combine(aux_seg)
+            # aux_seg = torch.nn.functional.interpolate(aux_seg,scale_factor = 4,mode='bilinear')
+            # aux_seg = self.out_layer(aux_seg)
+
+            out3 = self.aspp(x3)
             x4 = self.aux_header4(fea)
-            x4 = torch.nn.functional.interpolate(x4,scale_factor = 4,mode='bilinear')
-            aux_seg = torch.cat([x2,x3,x4],dim=1)
-            aux_seg = self.aux_combine(aux_seg)
+            x4 = F.interpolate(x4,scale_factor = 2,mode='bilinear')
+
+            out3 = torch.cat([out3, x4],dim=1)
+            out3 = self.aux_header3(out3)
+            out2 = F.interpolate(out3,scale_factor = 2,mode='bilinear')
+            
+            out2 = torch.cat([out2, x2],dim=1)
+            out2= self.aux_header2(out2)
+            out1 = F.interpolate(out2,scale_factor = 2,mode='bilinear')
+
+            out1 = torch.cat([out1, x1],dim=1)
+            out1= self.aux_header1(out1)
+
+            out = F.interpolate(out1,scale_factor = 4,mode='bilinear')
+            aux_seg = self.out_layer(out)
+            
         else:
             aux_seg = None
 
@@ -104,7 +228,7 @@ def real_init_weights(m):
         for mini_m in m:
             real_init_weights(mini_m)
     else:
-        if isinstance(m, torch.nn.Conv2d):    
+        if isinstance(m, torch.nn.Conv2d):
             torch.nn.init.kaiming_normal_(m.weight, nonlinearity='relu')
             if m.bias is not None:
                 torch.nn.init.constant_(m.bias, 0)

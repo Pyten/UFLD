@@ -1,6 +1,6 @@
 # DATA
 dataset='CULane'
-data_root = None
+data_root = "/home/pantengteng/datasets/CULane"
 
 # TRAIN
 epoch = 50
@@ -28,14 +28,14 @@ shp_loss_w = 0.0
 # EXP
 note = ''
 
-log_path = None
+log_path = "/home/pantengteng/Programs/tensorboard_logs"
 
 # FINETUNE or RESUME MODEL PATH
 finetune = None
 resume = None
 
 # TEST
-test_model = None
+test_model = "../tensorboard_logs/20200909_134451_lr_1e-01_b_8/ep020.pth"#"./culane_18.pth"# 
 test_work_dir = None
 
 num_lanes = 4

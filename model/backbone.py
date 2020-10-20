@@ -53,4 +53,6 @@ class resnet(torch.nn.Module):
         x2 = self.layer2(x)
         x3 = self.layer3(x2)
         x4 = self.layer4(x3)
-        return x2,x3,x4
+        # Pyten-20201010-Addlayer1
+        # return x2,x3,x4
+        return x, x2, x3, x4

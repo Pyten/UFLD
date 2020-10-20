@@ -2,6 +2,45 @@ import os, argparse
 from utils.dist_utils import is_main_process, dist_print, DistSummaryWriter
 from utils.config import Config
 import torch
+# Pyten
+import pdb
+from data.cityscapes_labels import trainId2color
+
+# Pyten-202010-DecodePredict
+def decode_seg_color_map(label):
+    # pdb.set_trace()
+    color_map = torch.ones((label.shape[0], label.shape[1], 3))* 255
+    for id in trainId2color:
+        color_map[label == id] = torch.tensor(trainId2color[id]).float()
+
+    return color_map
+
+def decode_cls_color_map(img, label, anchors, cfg): # img, 
+    """
+    img: transformed img，tensor
+    label: prediction or label
+    anchors: anchors
+    """
+    # ?(288,800,3)
+    c, h, w  = img.shape
+    grid_width = w / cfg.griding_num
+    anchor_height = anchors[1] - anchors[0]
+    # if h != 288:
+    #         scale_f = lambda x : int((x * 1.0/288) * h)
+    #         anchor_list = list(map(scale_f, anchors))
+    
+    # Pyten-20201012-fixshape
+    # Pyten-20201013-AddExtraCell
+    # color_map = torch.ones((img.shape[1], img.shape[2], img.shape[0]))* 255
+    color_map = torch.ones((img.shape[1], img.shape[2] + int(grid_width+1), img.shape[0]))* 255
+    for anchor in range(label.shape[0]):
+        for lane in range(label.shape[1]):
+            grid_index = label[anchor, lane]
+            # pdb.set_trace()
+            # if grid_index < cfg.griding_num:
+            color_map[anchors[anchor] - anchor_height:anchors[anchor], int(grid_width*(grid_index)):int(grid_width*(grid_index + 1)), :] =  torch.tensor(trainId2color[lane]).float()
+    return color_map
+
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -105,3 +144,4 @@ def get_logger(work_dir, cfg):
             fp.write(str(cfg))
 
     return logger
+     

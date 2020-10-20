@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import pdb
 import numpy as np
 
 class OhemCELoss(nn.Module):
@@ -27,7 +27,14 @@ class SoftmaxFocalLoss(nn.Module):
     def __init__(self, gamma, ignore_lb=255, *args, **kwargs):
         super(SoftmaxFocalLoss, self).__init__()
         self.gamma = gamma
-        self.nll = nn.NLLLoss(ignore_index=ignore_lb)
+        # Pyten-20201014-AddWeight
+        if "weight" in kwargs.keys():
+            # print("set w")
+            # pdb.set_trace()
+            self.nll = nn.NLLLoss(weight = kwargs["weight"], ignore_index=ignore_lb)
+        else:
+            # print("no w")
+            self.nll = nn.NLLLoss(ignore_index=ignore_lb)
 
     def forward(self, logits, labels):
         scores = F.softmax(logits, dim=1)

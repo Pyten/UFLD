@@ -7,8 +7,11 @@ def converter(data):
         data = data.cpu().data.numpy().flatten()
     return data.flatten()
 def fast_hist(label_pred, label_true,num_classes):
-    #pdb.set_trace()
-    hist = np.bincount(num_classes * label_true.astype(int) + label_pred, minlength=num_classes ** 2)
+    # pdb.set_trace()
+    # Pyten-20201010-AddFilter
+    valid = (label_true >= 0) & (label_true < 19)
+    hist = np.bincount(num_classes * label_true[valid].astype(int) + label_pred[valid], minlength=num_classes ** 2)
+    # hist = np.bincount(num_classes * label_true.astype(int) + label_pred, minlength=num_classes ** 2)
     hist = hist.reshape(num_classes, num_classes)
     return hist
 
@@ -24,9 +27,10 @@ class Metric_mIoU():
     def reset(self):
         self.hist = np.zeros((self.class_num,self.class_num))
     def get_miou(self):
+        # Pyten-20201015-FixZeroDivide
         miou = np.diag(self.hist) / (
                     np.sum(self.hist, axis=1) + np.sum(self.hist, axis=0) -
-                    np.diag(self.hist))
+                    np.diag(self.hist) + 0.001)
         miou = np.nanmean(miou)
         return miou
 

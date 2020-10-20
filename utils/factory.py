@@ -27,11 +27,17 @@ def get_scheduler(optimizer, cfg, iters_per_epoch):
 
 def get_loss_dict(cfg):
 
+    # Pyten-20201014-AddNLLWeight
+    w = torch.ones(cfg.griding_num + 1).cuda()
+    w[-1] = 0.5
+
     if cfg.use_aux:
         loss_dict = {
             'name': ['cls_loss', 'relation_loss', 'aux_loss', 'relation_dis'],
-            'op': [SoftmaxFocalLoss(2), ParsingRelationLoss(), torch.nn.CrossEntropyLoss(), ParsingRelationDis()],
-            'weight': [1.0, cfg.sim_loss_w, 1.0, cfg.shp_loss_w],
+            'op': [SoftmaxFocalLoss(2, weight=w), ParsingRelationLoss(), torch.nn.CrossEntropyLoss(ignore_index=255), ParsingRelationDis()],
+            # 'op': [SoftmaxFocalLoss(2, 200), ParsingRelationLoss(), torch.nn.CrossEntropyLoss(ignore_index=255), ParsingRelationDis()],
+            'weight': [cfg.cls_loss_w, cfg.sim_loss_w,  cfg.seg_loss_w, cfg.shp_loss_w],
+            # 'weight': [1.0, cfg.sim_loss_w, 1.0, cfg.shp_loss_w],
             'data_src': [('cls_out', 'cls_label'), ('cls_out',), ('seg_out', 'seg_label'), ('cls_out',)]
         }
     else:
@@ -44,21 +50,24 @@ def get_loss_dict(cfg):
 
     return loss_dict
 
+
 def get_metric_dict(cfg):
 
     if cfg.use_aux:
         metric_dict = {
             'name': ['top1', 'top2', 'top3', 'iou'],
-            'op': [MultiLabelAcc(), AccTopk(cfg.griding_num, 2), AccTopk(cfg.griding_num, 3), Metric_mIoU(cfg.num_lanes+1)],
+            'best_metric':{'top1':0, 'top2':0, 'top3':0, 'iou':0},
+            # 'op': [MultiLabelAcc(), AccTopk(cfg.griding_num, 2), AccTopk(cfg.griding_num, 3), Metric_mIoU(cfg.num_lanes+1)],
+            'op': [MultiLabelAcc(), AccTopk(cfg.griding_num, 2), AccTopk(cfg.griding_num, 3), Metric_mIoU(19)],
             'data_src': [('cls_out', 'cls_label'), ('cls_out', 'cls_label'), ('cls_out', 'cls_label'), ('seg_out', 'seg_label')]
         }
     else:
         metric_dict = {
             'name': ['top1', 'top2', 'top3'],
+            'best_metric':{'top1':0, 'top2':0, 'top3':0},
             'op': [MultiLabelAcc(), AccTopk(cfg.griding_num, 2), AccTopk(cfg.griding_num, 3)],
             'data_src': [('cls_out', 'cls_label'), ('cls_out', 'cls_label'), ('cls_out', 'cls_label')]
         }
-
     
     return metric_dict
 
@@ -125,5 +134,3 @@ class CosineAnnealingLR:
 
         for group, lr in zip(self.optimizer.param_groups, self.base_lr):
             group['lr'] = self.eta_min + (lr - self.eta_min) * (1 + math.cos(math.pi * self.iters / self.T_max)) / 2
-
-        

@@ -29,14 +29,14 @@ shp_loss_w = 0.0
 # EXP
 note = ''
 
-log_path = None
+log_path = "/home/pantengteng/Programs/tensorboard_logs/"
 
 # FINETUNE or RESUME MODEL PATH
 finetune = None
 resume = None
 
 # TEST
-test_model = None
+test_model = "./culane_18.pth"
 test_work_dir = None
 
 num_lanes = 4

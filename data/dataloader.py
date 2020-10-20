@@ -4,7 +4,8 @@ import numpy as np
 import torchvision.transforms as transforms
 import data.mytransforms as mytransforms
 from data.constant import tusimple_row_anchor, culane_row_anchor
-from data.dataset import LaneClsDataset, LaneTestDataset
+# Pyten-20201009-Change
+from data.dataset_bdd import LaneClsDataset, LaneTestDataset
 
 def get_train_loader(batch_size, data_root, griding_num, dataset, use_aux, distributed, num_lanes):
     target_transform = transforms.Compose([
@@ -25,15 +26,37 @@ def get_train_loader(batch_size, data_root, griding_num, dataset, use_aux, distr
         mytransforms.RandomUDoffsetLABEL(100),
         mytransforms.RandomLROffsetLABEL(200)
     ])
+    # Pyten-20201010-AddBddTrans
+    segment_transform_bdd = transforms.Compose([
+        mytransforms.FreeScaleMask((288, 800)),
+        mytransforms.MaskToTensor(),
+    ])
+    simu_transform_bdd =  mytransforms.Compose2([
+        mytransforms.RandomRotate(6),
+        mytransforms.RandomUDoffsetLABEL(100),
+        mytransforms.RandomLROffsetLABEL(200)
+    ])
+    
     if dataset == 'CULane':
         train_dataset = LaneClsDataset(data_root,
                                            os.path.join(data_root, 'list/train_gt.txt'),
                                            img_transform=img_transform, target_transform=target_transform,
                                            simu_transform = simu_transform,
-                                           segment_transform=segment_transform, 
+                                           segment_transform=segment_transform,
                                            row_anchor = culane_row_anchor,
                                            griding_num=griding_num, use_aux=use_aux, num_lanes = num_lanes)
         cls_num_per_lane = 18
+    # Pyten-20201010-AddBdd
+    elif dataset == 'Bdd100k':
+        train_dataset = LaneClsDataset(data_root,
+                                           os.path.join(data_root, 'train.txt'), #new_train.txt
+                                           img_transform=img_transform, target_transform=target_transform,
+                                           simu_transform = simu_transform_bdd,
+                                           griding_num=griding_num, 
+                                           row_anchor = tusimple_row_anchor,
+                                           segment_transform=segment_transform_bdd,use_aux=use_aux, num_lanes = num_lanes)
+        # cls_num_per_lane = 56
+        cls_num_per_lane = 56
 
     elif dataset == 'Tusimple':
         train_dataset = LaneClsDataset(data_root,
@@ -55,6 +78,61 @@ def get_train_loader(batch_size, data_root, griding_num, dataset, use_aux, distr
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, sampler = sampler, num_workers=4)
 
     return train_loader, cls_num_per_lane
+
+# Pyten-20201019-Add_val_loader
+def get_val_loader(batch_size, data_root, griding_num, dataset, use_aux, distributed, num_lanes):
+    target_transform = transforms.Compose([
+        mytransforms.FreeScaleMask((288, 800)),
+        mytransforms.MaskToTensor(),
+    ])
+    img_transform = transforms.Compose([
+        transforms.Resize((288, 800)),
+        transforms.ToTensor(),
+        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+    ])
+    # Pyten-20201010-AddBddTrans
+    segment_transform_bdd = transforms.Compose([
+        mytransforms.FreeScaleMask((288, 800)),
+        mytransforms.MaskToTensor(),
+    ])
+    
+    if dataset == 'CULane':
+        val_dataset = LaneClsDataset(data_root,
+                                           os.path.join(data_root, 'list/train_gt.txt'),
+                                           img_transform=img_transform, target_transform=target_transform,
+                                           simu_transform = None,
+                                           segment_transform=segment_transform,
+                                           row_anchor = culane_row_anchor,
+                                           griding_num=griding_num, use_aux=use_aux, num_lanes = num_lanes)
+
+    elif dataset == 'Bdd100k':
+        val_dataset = LaneClsDataset(data_root,
+                                           os.path.join(data_root, 'val.txt'),
+                                           img_transform=img_transform, target_transform=target_transform,
+                                           simu_transform = None,
+                                           griding_num=griding_num, 
+                                           row_anchor = tusimple_row_anchor,
+                                           segment_transform=segment_transform_bdd,use_aux=use_aux, num_lanes = num_lanes)
+
+    elif dataset == 'Tusimple':
+        val_dataset = LaneClsDataset(data_root,
+                                           os.path.join(data_root, 'train_gt.txt'),
+                                           img_transform=img_transform, target_transform=target_transform,
+                                           simu_transform = None,
+                                           griding_num=griding_num, 
+                                           row_anchor = tusimple_row_anchor,
+                                           segment_transform=segment_transform,use_aux=use_aux, num_lanes = num_lanes)
+    else:
+        raise NotImplementedError
+
+    if distributed:
+        sampler = torch.utils.data.distributed.DistributedSampler(val_dataset)
+    else:
+        sampler = torch.utils.data.RandomSampler(val_dataset)
+
+    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, sampler = sampler, num_workers=4)
+
+    return val_loader
 
 def get_test_loader(batch_size, data_root,dataset, distributed):
     img_transforms = transforms.Compose([

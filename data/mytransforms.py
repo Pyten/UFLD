@@ -17,6 +17,8 @@ class Compose2(object):
         if bbx is None:
             for t in self.transforms:
                 img, mask = t(img, mask)
+            # Pyten-Debug
+            # print(type(mask))
             return img, mask
         for t in self.transforms:
             img, mask, bbx = t(img, mask, bbx)
@@ -65,17 +67,29 @@ class RandomRotate(object):
 
     def __init__(self, angle):
         self.angle = angle
-
-    def __call__(self, image, label):
-        assert label is None or image.size == label.size
-
+    # Pyten-20201009-ChangeforMultiLabel
+    def __call__(self, image, labels):
+        # Pyten-Debug
+        # print(type(labels), len(labels), type(labels[0]))
+        assert labels is None or image.size == labels[0].size
 
         angle = random.randint(0, self.angle * 2) - self.angle
 
-        label = label.rotate(angle, resample=Image.NEAREST)
+        # Pyten-20201009-ChangeforMultiLabel
+        # label = label.rotate(angle, resample=Image.NEAREST)
+        # image = image.rotate(angle, resample=Image.BILINEAR)
+        #  return image, label
+        label_list = []
+        if not isinstance(labels, list):
+            labels = [labels]
+        for label in labels:
+            label = label.rotate(angle, resample=Image.NEAREST)
+            label_list.append(label)
         image = image.rotate(angle, resample=Image.BILINEAR)
-
-        return image, label
+        if len(labels) < 2:
+            return image, label_list[0]
+        else:
+            return image, label_list
 
 
 
@@ -117,10 +131,12 @@ def find_start_pos(row_sample,start_line):
 class RandomLROffsetLABEL(object):
     def __init__(self,max_offset):
         self.max_offset = max_offset
-    def __call__(self,img,label):
+    def __call__(self, img, labels):
         offset = np.random.randint(-self.max_offset,self.max_offset)
         w, h = img.size
 
+        # Pyten-Debug
+        # print("LROff", type(labels)) # len(labels)) # type(labels[0])
         img = np.array(img)
         if offset > 0:
             img[:,offset:,:] = img[:,0:w-offset,:]
@@ -130,23 +146,42 @@ class RandomLROffsetLABEL(object):
             img[:,0:w-real_offset,:] = img[:,real_offset:,:]
             img[:,w-real_offset:,:] = 0
 
-        label = np.array(label)
-        if offset > 0:
-            label[:,offset:] = label[:,0:w-offset]
-            label[:,:offset] = 0
-        if offset < 0:
-            offset = -offset
-            label[:,0:w-offset] = label[:,offset:]
-            label[:,w-offset:] = 0
-        return Image.fromarray(img),Image.fromarray(label)
+        # Pyten-20201009-Add-loop-for-seg-labels
+        label_list = []
+        if not isinstance(labels, list):
+                    labels = [labels]
+        
+        for label in labels:
+
+            label = np.array(label)
+            if offset > 0:
+                label[:,offset:] = label[:,0:w-offset]
+                label[:,:offset] = 0
+            if offset < 0:
+                offset = -offset
+                label[:,0:w-offset] = label[:,offset:]
+                label[:,w-offset:] = 0
+            
+            label_list.append(label)
+
+        if len(label_list) < 2:
+            # Pyten-Debug
+            # print("LR return no list")
+            return Image.fromarray(img),Image.fromarray(label)
+        else:
+            # Pyten-Debug
+            # print("LR return list")
+            return Image.fromarray(img), [Image.fromarray(label) for label in label_list]
 
 class RandomUDoffsetLABEL(object):
     def __init__(self,max_offset):
         self.max_offset = max_offset
-    def __call__(self,img,label):
+    def __call__(self, img, labels):
         offset = np.random.randint(-self.max_offset,self.max_offset)
         w, h = img.size
 
+        # Pyten-Debug
+        # print("UDoff", type(labels), len(labels))
         img = np.array(img)
         if offset > 0:
             img[offset:,:,:] = img[0:h-offset,:,:]
@@ -156,12 +191,31 @@ class RandomUDoffsetLABEL(object):
             img[0:h-real_offset,:,:] = img[real_offset:,:,:]
             img[h-real_offset:,:,:] = 0
 
-        label = np.array(label)
-        if offset > 0:
-            label[offset:,:] = label[0:h-offset,:]
-            label[:offset,:] = 0
-        if offset < 0:
-            offset = -offset
-            label[0:h-offset,:] = label[offset:,:]
-            label[h-offset:,:] = 0
-        return Image.fromarray(img),Image.fromarray(label)
+        # Pyten-20201009-Add-loop-for-seg-labels
+        label_list = []
+        if not isinstance(labels, list):
+            # Pyten-Debug
+            # print("not list")
+            labels = [labels]
+        for label in labels:
+
+            label = np.array(label)
+            if offset > 0:
+                label[offset:,:] = label[0:h-offset,:]
+                label[:offset,:] = 0
+            if offset < 0:
+                offset = -offset
+                label[0:h-offset,:] = label[offset:,:]
+                label[h-offset:,:] = 0
+
+            label_list.append(label)
+
+        if len(label_list) < 2:
+            # Pyten-Debug
+            # print("UD return no list")
+            return Image.fromarray(img), Image.fromarray(label)
+        else:
+            # Pyten-Debug
+            # print("UD return list")
+            return Image.fromarray(img), [Image.fromarray(label) for label in label_list]
+
