@@ -86,7 +86,7 @@ class AtrousSpatialPyramidPoolingModule(torch.nn.Module):
         return out
 
 class parsingNet(torch.nn.Module):
-    def __init__(self, size=(288, 800), pretrained=True, backbone='50', cls_dim=(37, 10, 4), use_aux=False):
+    def __init__(self, size=(288, 800), pretrained=True, backbone='50', cls_dim=(37, 10, 4), use_seg=False, use_cls=True):
         super(parsingNet, self).__init__()
 
         self.size = size
@@ -94,14 +94,16 @@ class parsingNet(torch.nn.Module):
         self.h = size[1]
         self.cls_dim = cls_dim # (num_gridding, num_cls_per_lane, num_of_lanes)
         # num_cls_per_lane is the number of row anchors
-        self.use_aux = use_aux
+        self.use_seg = use_seg
+        self.use_cls = use_cls
         self.total_dim = np.prod(cls_dim)
 
+        # Pyten-20201020-TestSeperateModel
         # input : nchw,
         # output: (w+1) * sample_rows * 4
         self.model = resnet(backbone, pretrained=pretrained)
 
-        if self.use_aux:
+        if self.use_seg:
             # Pyten-20201010-Addheader1
             self.aux_header1 = torch.nn.Sequential(
                 conv_bn_relu(320, 256, kernel_size=3, stride=1, padding=1) if backbone in ['34','18'] else conv_bn_relu(512, 256, kernel_size=3, stride=1, padding=1),
@@ -150,20 +152,20 @@ class parsingNet(torch.nn.Module):
             else:
                  self.aspp = AtrousSpatialPyramidPoolingModule(1024,reduction_dim=512)
             
-            initialize_weights(self.aux_header2,self.aux_header3,self.aux_header4,self.aux_combine)
+            initialize_weights(self.aux_header2,self.aux_header3,self.aux_header4,self.aux_combine,self.aspp)
+        if self.use_cls:
+            self.cls = torch.nn.Sequential(
+                torch.nn.Linear(1800, 2048),
+                torch.nn.ReLU(),
+                torch.nn.Linear(2048, self.total_dim),
+            )
 
-        self.cls = torch.nn.Sequential(
-            torch.nn.Linear(1800, 2048),
-            torch.nn.ReLU(),
-            torch.nn.Linear(2048, self.total_dim),
-        )
-
-        self.pool = torch.nn.Conv2d(512,8,1) if backbone in ['34','18'] else torch.nn.Conv2d(2048,8,1)
-        # 1/32,2048 channel
-        # 288,800 -> 9,40,2048
-        # (w+1) * sample_rows * 4
-        # 37 * 10 * 4
-        initialize_weights(self.cls)
+            self.pool = torch.nn.Conv2d(512,8,1) if backbone in ['34','18'] else torch.nn.Conv2d(2048,8,1)
+            # 1/32,2048 channel
+            # 288,800 -> 9,40,2048
+            # (w+1) * sample_rows * 4
+            # 37 * 10 * 4
+            initialize_weights(self.cls)
 
     def forward(self, x):
         # n c h w - > n 2048 sh sw
@@ -172,7 +174,7 @@ class parsingNet(torch.nn.Module):
         # x2, x3, fea = self.model(x)
         x1, x2, x3, fea = self.model(x)
 
-        if self.use_aux:
+        if self.use_seg:
             # Pyten
             # x1 = self.aux_header1(x1)
             # x2 = self.aux_header2(x2)
@@ -209,14 +211,17 @@ class parsingNet(torch.nn.Module):
         else:
             aux_seg = None
 
-        fea = self.pool(fea).view(-1, 1800)
+        if self.use_cls:
+            fea = self.pool(fea).view(-1, 1800)
 
-        group_cls = self.cls(fea).view(-1, *self.cls_dim)
+            group_cls = self.cls(fea).view(-1, *self.cls_dim)
 
-        if self.use_aux:
+        if self.use_seg and self.use_cls:
             return group_cls, aux_seg
-
-        return group_cls
+        elif self.use_seg:
+            return aux_seg
+        else:
+            return group_cls
 
 
 def initialize_weights(*models):
