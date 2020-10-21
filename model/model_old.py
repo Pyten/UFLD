@@ -16,7 +16,7 @@ class conv_bn_relu(torch.nn.Module):
         x = self.relu(x)
         return x
 class parsingNet(torch.nn.Module):
-    def __init__(self, size=(288, 800), pretrained=True, backbone='50', cls_dim=(37, 10, 4), use_aux=False):
+    def __init__(self, size=(288, 800), pretrained=True, backbone='50', cls_dim=(37, 10, 4), use_seg=False):
         super(parsingNet, self).__init__()
 
         self.size = size
@@ -24,14 +24,14 @@ class parsingNet(torch.nn.Module):
         self.h = size[1]
         self.cls_dim = cls_dim # (num_gridding, num_cls_per_lane, num_of_lanes)
         # num_cls_per_lane is the number of row anchors
-        self.use_aux = use_aux
+        self.use_seg = use_seg
         self.total_dim = np.prod(cls_dim)
 
         # input : nchw,
         # output: (w+1) * sample_rows * 4
         self.model = resnet(backbone, pretrained=pretrained)
 
-        if self.use_aux:
+        if self.use_seg:
             self.aux_header2 = torch.nn.Sequential(
                 conv_bn_relu(128, 128, kernel_size=3, stride=1, padding=1) if backbone in ['34','18'] else conv_bn_relu(512, 128, kernel_size=3, stride=1, padding=1),
                 conv_bn_relu(128,128,3,padding=1),
@@ -77,7 +77,7 @@ class parsingNet(torch.nn.Module):
         # x2, x3, fea = self.model(x)
         x1, x2, x3, fea = self.model(x)
         
-        if self.use_aux:
+        if self.use_seg:
             x2 = self.aux_header2(x2)
             x3 = self.aux_header3(x3)
             x3 = torch.nn.functional.interpolate(x3,scale_factor = 2,mode='bilinear')
@@ -92,7 +92,7 @@ class parsingNet(torch.nn.Module):
 
         group_cls = self.cls(fea).view(-1, *self.cls_dim)
 
-        if self.use_aux:
+        if self.use_seg:
             return group_cls, aux_seg
 
         return group_cls

@@ -1,3 +1,4 @@
+import pdb
 import torch, os, cv2
 from model.model import parsingNet
 from utils.common import merge_config
@@ -25,7 +26,7 @@ if __name__ == "__main__":
         raise NotImplementedError
 
     net = parsingNet(pretrained = False, backbone=cfg.backbone,cls_dim = (cfg.griding_num+1,cls_num_per_lane,4),
-                    use_aux=False).cuda() # we dont need auxiliary segmentation in testing
+                    use_seg=False).cuda() # we dont need auxiliary segmentation in testing
 
     state_dict = torch.load(cfg.test_model, map_location='cpu')['model']
     compatible_state_dict = {}
@@ -63,6 +64,7 @@ if __name__ == "__main__":
         for i, data in enumerate(tqdm.tqdm(loader)):
             imgs, names = data
             imgs = imgs.cuda()
+            pdb.set_trace()
             with torch.no_grad():
                 out = net(imgs)
 

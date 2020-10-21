@@ -10,6 +10,7 @@ import numpy as np
 import torchvision.transforms as transforms
 from data.dataset import LaneTestDataset
 from data.constant import culane_row_anchor, tusimple_row_anchor
+from utils.common import decode_seg_color_map
 
 if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True
@@ -32,7 +33,7 @@ if __name__ == "__main__":
         raise NotImplementedError
 
     net = parsingNet(pretrained = False, backbone=cfg.backbone,cls_dim = (cfg.griding_num+1,cls_num_per_lane, lane_num),
-                    use_aux=False).cuda() # we dont need auxiliary segmentation in testing
+                    use_seg=cfg.use_seg).cuda() # we dont need auxiliary segmentation in testing
 
     state_dict = torch.load(cfg.test_model, map_location='cpu')['model']
     compatible_state_dict = {}
@@ -74,7 +75,7 @@ if __name__ == "__main__":
     # pdb.set_trace()
     #data_folder = os.path.join(os.getcwd(), "testdata")
     data_folder = "/home/pantengteng/datasets/customed_lane_data"
-    save_folder = os.path.join(os.getcwd(), f"ufld_test_result/test_result/{cfg.dataset}") #_SH
+    save_folder = os.path.join(os.getcwd(), f"ufld_test_results/test_new_result/{cfg.dataset}") #_SH
     # save_folder = os.path.join(os.getcwd(), f"test_result/{cfg.dataset}") #_SH
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
@@ -88,18 +89,20 @@ if __name__ == "__main__":
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         # In_img = torch.from_numpy(img).cuda()
         # Totensor转换为CHW.permute(0,3,1,2)
-        In_img = img_transforms(img).unsqueeze(0).cuda()
+        in_img = img_transforms(img).unsqueeze(0).cuda()
 
         start_time = time.time()
         with torch.no_grad():
-            out = net(In_img)
-        end_time = time.time()
+            if cfg.use_seg:
+                cls_out, seg_out = net(in_img)
+            else:
+                cls_out = net(in_img)
+            end_time = time.time()
         total_time += end_time - start_time
 
         col_sample = np.linspace(0, 800 - 1, cfg.griding_num)
         col_sample_w = col_sample[1] - col_sample[0]
-
-        out_j = out[0].data.cpu().numpy()
+        out_j = cls_out[0].data.cpu().numpy()
         out_j = out_j[:, ::-1, :]
         prob = scipy.special.softmax(out_j[:-1, :, :], axis=0)
         idx = np.arange(cfg.griding_num) + 1
@@ -118,5 +121,13 @@ if __name__ == "__main__":
                         ppp = (int(out_j[k, i] * col_sample_w * img_w / 800) - 1, int(img_h * (row_anchor[cls_num_per_lane-1-k]/288)) - 1 )
                         cv2.circle(org_img, ppp,5,(0,255,0),-1)
         cv2.imwrite(os.path.join(save_folder, cfg.save_prefix + img_name), org_img)
+
+        # Pyten-20201020-AddSegOut
+        if cfg.use_seg:
+            # pdb.set_trace()
+            seg_predict = torch.argmax(seg_out, dim=1).squeeze(0)
+            seg_img = decode_seg_color_map(seg_predict)
+            seg_img = seg_img.data.cpu().numpy()
+            cv2.imwrite(os.path.join(save_folder, cfg.save_prefix +"seg"+ img_name), seg_img)
 
     print(total_time / len(img_list))

@@ -17,7 +17,7 @@ warmup = 'linear'
 warmup_iters = 695
 
 # NETWORK
-use_aux = True
+use_seg = True
 griding_num = 200
 backbone = '18'
 

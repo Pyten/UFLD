@@ -37,7 +37,7 @@ class LaneTestDataset(torch.utils.data.Dataset):
 
 class LaneClsDataset(torch.utils.data.Dataset):
     def __init__(self, path, list_path, img_transform = None,target_transform = None,simu_transform = None, griding_num=50, load_name = False,
-                row_anchor = None,use_aux=False,segment_transform=None, num_lanes = 4):
+                row_anchor = None,use_seg=False,segment_transform=None, num_lanes = 4):
         super(LaneClsDataset, self).__init__()
         self.img_transform = img_transform
         self.target_transform = target_transform
@@ -46,7 +46,7 @@ class LaneClsDataset(torch.utils.data.Dataset):
         self.path = path
         self.griding_num = griding_num
         self.load_name = load_name
-        self.use_aux = use_aux
+        self.use_seg = use_seg
         self.num_lanes = num_lanes
 
         with open(list_path, 'r') as f:
@@ -91,14 +91,14 @@ class LaneClsDataset(torch.utils.data.Dataset):
         w, h = img.size
         cls_label = self._grid_pts(lane_pts, self.griding_num, w)
         # make the coordinates to classification label
-        if self.use_aux:
+        if self.use_seg:
             assert self.segment_transform is not None
             seg_label = self.segment_transform(seg_label)
 
         if self.img_transform is not None:
             img = self.img_transform(img)
 
-        if self.use_aux:
+        if self.use_seg:
             return img, cls_label, seg_label
         if self.load_name:
             return img, cls_label, img_name
