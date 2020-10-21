@@ -72,7 +72,10 @@ def get_args():
     parser.add_argument('--warmup_iters', default = None, type = int)
     parser.add_argument('--backbone', default = None, type = str)
     parser.add_argument('--griding_num', default = None, type = int)
-    parser.add_argument('--use_aux', default = None, type = str2bool)
+    parser.add_argument('--use_seg', default = None, type = str2bool)
+    # Pyten-20201020-SeperateModels
+    parser.add_argument('--use_cls', default = True, type = str2bool)
+
     parser.add_argument('--sim_loss_w', default = None, type = float)
     parser.add_argument('--shp_loss_w', default = None, type = float)
     parser.add_argument('--note', default = None, type = str)
@@ -90,7 +93,7 @@ def merge_config():
 
     items = ['dataset','data_root','epoch','batch_size','optimizer','learning_rate',
     'weight_decay','momentum','scheduler','steps','gamma','warmup','warmup_iters',
-    'use_aux','griding_num','backbone','sim_loss_w','shp_loss_w','note','log_path',
+    'use_seg','use_cls','griding_num','backbone','sim_loss_w','shp_loss_w','note','log_path',
     'finetune','resume', 'test_model','test_work_dir', 'num_lanes']
     for item in items:
         if getattr(args, item) is not None:

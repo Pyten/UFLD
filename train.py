@@ -18,14 +18,19 @@ import time
 
 from data.constant import tusimple_row_anchor, culane_row_anchor
 
-def inference(net, data_label, use_aux):
-    if use_aux:
+def inference(net, data_label, use_seg, use_cls):
+    if use_seg and use_cls:
         img, cls_label, seg_label = data_label
         img, cls_label, seg_label = img.cuda(), cls_label.cuda(), seg_label.cuda()
         cls_out, seg_out = net(img)
         # Pyten-20201010-ChangeSegOut
         # seg_out = torch.max(seg_out, dim=1)[1].float()
         return {'cls_out': cls_out, 'cls_label': cls_label, 'seg_out':seg_out, 'seg_label': seg_label}
+    elif use_seg:
+        img, cls_label, seg_label = data_label
+        img, seg_label = img.cuda(), seg_label.cuda()
+        seg_out = net(img)
+        return {'seg_out':seg_out, 'seg_label': seg_label}
     else:
         img, cls_label = data_label
         img, cls_label = img.cuda(), cls_label.cuda()
@@ -33,9 +38,10 @@ def inference(net, data_label, use_aux):
         return {'cls_out': cls_out, 'cls_label': cls_label}
 
 
-def resolve_val_data(results, use_aux):
-    results['cls_out'] = torch.argmax(results['cls_out'], dim=1)
-    if use_aux:
+def resolve_val_data(results, use_seg, use_cls):
+    if use_cls:
+        results['cls_out'] = torch.argmax(results['cls_out'], dim=1)
+    if use_seg:
         results['seg_out'] = torch.argmax(results['seg_out'], dim=1)
     return results
 
@@ -66,7 +72,7 @@ def calc_loss(loss_dict, results, logger, global_step, mode = "train", awl=None)
     return loss
 
 
-def train(net, data_loader, loss_dict, optimizer, scheduler,logger, epoch, metric_dict, use_aux, awl):
+def train(net, data_loader, loss_dict, optimizer, scheduler,logger, epoch, metric_dict, use_seg, use_cls, awl):
     net.train()
     progress_bar = dist_tqdm(train_loader)
     t_data_0 = time.time()
@@ -79,7 +85,7 @@ def train(net, data_loader, loss_dict, optimizer, scheduler,logger, epoch, metri
 
         t_net_0 = time.time()
         # pdb.set_trace()
-        results = inference(net, data_label, use_aux)
+        results = inference(net, data_label, use_seg, use_cls)
         loss = calc_loss(loss_dict, results, logger, global_step, "train",awl)
         optimizer.zero_grad()
         loss.backward()
@@ -87,22 +93,23 @@ def train(net, data_loader, loss_dict, optimizer, scheduler,logger, epoch, metri
         scheduler.step(global_step)
         t_net_1 = time.time()
 
-        results = resolve_val_data(results, use_aux)
+        results = resolve_val_data(results, use_seg, use_cls)
 
         update_metrics(metric_dict, results)
         if global_step % 20 == 0:
             # Pyten-20201012-AddImage2TBD
-            if use_aux:
-                logger.add_image("train_image", data_label[0][0], global_step=global_step)
+            logger.add_image("train_image", data_label[0][0], global_step=global_step)
+            if use_seg:
                 seg_color_out = decode_seg_color_map(results["seg_out"][0])
                 seg_color_label = decode_seg_color_map( results["seg_label"][0])
                 logger.add_image("train_seg/predict", seg_color_out, global_step=global_step, dataformats='HWC')
                 logger.add_image("train_seg/label",seg_color_label, global_step=global_step, dataformats='HWC')
             # Pyten-20201012-anchors需要根据参数调整 
-            cls_color_out = decode_cls_color_map(data_label[0][0], results["cls_out"][0], tusimple_row_anchor, cfg)
-            cls_color_label = decode_cls_color_map(data_label[0][0], results["cls_label"][0], tusimple_row_anchor, cfg)
-            logger.add_image("train_cls/predict", cls_color_out, global_step=global_step, dataformats='HWC')
-            logger.add_image("train_cls/label", cls_color_label, global_step=global_step, dataformats='HWC')
+            if use_cls:
+                cls_color_out = decode_cls_color_map(data_label[0][0], results["cls_out"][0], tusimple_row_anchor, cfg)
+                cls_color_label = decode_cls_color_map(data_label[0][0], results["cls_label"][0], tusimple_row_anchor, cfg)
+                logger.add_image("train_cls/predict", cls_color_out, global_step=global_step, dataformats='HWC')
+                logger.add_image("train_cls/label", cls_color_label, global_step=global_step, dataformats='HWC')
             #  results: {'cls_out': cls_out, 'cls_label': cls_label, 'seg_out':seg_out, 'seg_label': seg_label}
 
             for me_name, me_op in zip(metric_dict['name'], metric_dict['op']):
@@ -118,7 +125,7 @@ def train(net, data_loader, loss_dict, optimizer, scheduler,logger, epoch, metri
         t_data_0 = time.time()
 
  # Pyten-20201019-AddValidation
-def val(net, data_loader, loss_dict, optimizer, scheduler,logger, epoch, metric_dict, use_aux, awl):
+def val(net, data_loader, loss_dict, optimizer, scheduler,logger, epoch, metric_dict, use_seg, use_cls, awl):
     net.eval()
     progress_bar = dist_tqdm(val_loader)
     t_data_0 = time.time()
@@ -131,32 +138,32 @@ def val(net, data_loader, loss_dict, optimizer, scheduler,logger, epoch, metric_
 
         t_net_0 = time.time()
         # pdb.set_trace()
-        results = inference(net, data_label, use_aux)
+        results = inference(net, data_label, use_seg, use_cls)
         loss = calc_loss(loss_dict, results, logger, global_step, "val", awl)
 
         scheduler.step(global_step)
         t_net_1 = time.time()
 
-        results = resolve_val_data(results, use_aux)
+        results = resolve_val_data(results, use_seg, use_cls)
 
         update_metrics(metric_dict, results)
         if global_step % 20 == 0:
-            if use_aux:
-                logger.add_image("test_image", data_label[0][0], global_step=global_step)
+            logger.add_image("val_image", data_label[0][0], global_step=global_step)
+            if use_seg:
                 seg_color_out = decode_seg_color_map(results["seg_out"][0])
                 seg_color_label = decode_seg_color_map( results["seg_label"][0])
-                logger.add_image("test_seg/predict", seg_color_out, global_step=global_step, dataformats='HWC')
-                logger.add_image("test_seg/label",seg_color_label, global_step=global_step, dataformats='HWC')
-            
-            cls_color_out = decode_cls_color_map(data_label[0][0], results["cls_out"][0], tusimple_row_anchor, cfg)
-            cls_color_label = decode_cls_color_map(data_label[0][0], results["cls_label"][0], tusimple_row_anchor, cfg)
-            logger.add_image("test_cls/predict", cls_color_out, global_step=global_step, dataformats='HWC')
-            logger.add_image("test_cls/label", cls_color_label, global_step=global_step, dataformats='HWC')
-            #  results: {'cls_out': cls_out, 'cls_label': cls_label, 'seg_out':seg_out, 'seg_label': seg_label}
+                logger.add_image("val_seg/predict", seg_color_out, global_step=global_step, dataformats='HWC')
+                logger.add_image("val_seg/label",seg_color_label, global_step=global_step, dataformats='HWC')
+            if use_cls:
+                cls_color_out = decode_cls_color_map(data_label[0][0], results["cls_out"][0], tusimple_row_anchor, cfg)
+                cls_color_label = decode_cls_color_map(data_label[0][0], results["cls_label"][0], tusimple_row_anchor, cfg)
+                logger.add_image("val_cls/predict", cls_color_out, global_step=global_step, dataformats='HWC')
+                logger.add_image("val_cls/label", cls_color_label, global_step=global_step, dataformats='HWC')
+                #  results: {'cls_out': cls_out, 'cls_label': cls_label, 'seg_out':seg_out, 'seg_label': seg_label}
 
             for me_name, me_op in zip(metric_dict['name'], metric_dict['op']):
-                logger.add_scalar('test_metric/' + me_name, me_op.get(), global_step=global_step)
-        logger.add_scalar('test_meta/lr', optimizer.param_groups[0]['lr'], global_step=global_step)
+                logger.add_scalar('val_metric/' + me_name, me_op.get(), global_step=global_step)
+        logger.add_scalar('val_meta/lr', optimizer.param_groups[0]['lr'], global_step=global_step)
 
         if hasattr(progress_bar,'set_postfix'):
             kwargs = {me_name: '%.3f' % me_op.get() for me_name, me_op in zip(metric_dict['name'], metric_dict['op'])}
@@ -175,11 +182,11 @@ def val(net, data_loader, loss_dict, optimizer, scheduler,logger, epoch, metric_
         for me_name, me_op in zip(metric_dict['name'], metric_dict['op']):
             metric_dict["best_metric"][me_name] = me_op.get()
                 
-        
 
 if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True
     args, cfg = merge_config()
+    assert(cfg.use_cls or cfg.use_seg)
 
     work_dir = get_work_dir(cfg)
 
@@ -194,11 +201,11 @@ if __name__ == "__main__":
     dist_print(cfg)
     assert cfg.backbone in ['18','34','50','101','152','50next','101next','50wide','101wide']
 
-    train_loader, cls_num_per_lane = get_train_loader(cfg.batch_size, cfg.data_root, cfg.griding_num, cfg.dataset, cfg.use_aux, distributed, cfg.num_lanes)
+    train_loader, cls_num_per_lane = get_train_loader(cfg.batch_size, cfg.data_root, cfg.griding_num, cfg.dataset, cfg.use_seg, distributed, cfg.num_lanes)
     if cfg.val:
-        val_loader = get_val_loader(cfg.val_batch_size, cfg.data_root, cfg.griding_num, cfg.dataset, cfg.use_aux, distributed, cfg.num_lanes)
+        val_loader = get_val_loader(cfg.val_batch_size, cfg.data_root, cfg.griding_num, cfg.dataset, cfg.use_seg, distributed, cfg.num_lanes)
     
-    net = parsingNet(pretrained = True, backbone=cfg.backbone,cls_dim = (cfg.griding_num+1,cls_num_per_lane, cfg.num_lanes),use_aux=cfg.use_aux).cuda()
+    net = parsingNet(pretrained = True, backbone=cfg.backbone,cls_dim = (cfg.griding_num+1,cls_num_per_lane, cfg.num_lanes),use_seg=cfg.use_seg,use_cls=cfg.use_cls).cuda()
     # Pyten-20201015-AddAutoWeightedLoss
     if "awl" in cfg:
         awl = AutomaticWeightedLoss(cfg.awl)
@@ -238,11 +245,11 @@ if __name__ == "__main__":
     for epoch in range(resume_epoch, cfg.epoch):
         # pdb.set_trace()
         print("epoch:", epoch)
-        train(net, train_loader, loss_dict, optimizer, scheduler,logger, epoch, metric_dict, cfg.use_aux, awl)
+        train(net, train_loader, loss_dict, optimizer, scheduler,logger, epoch, metric_dict, cfg.use_seg, cfg.use_cls, awl)
         
         # Pyten-20201019-AddValidation
         if cfg.val:
-            val(net, train_loader, loss_dict, optimizer, scheduler,logger, epoch, metric_dict, cfg.use_aux, awl)
+            val(net, train_loader, loss_dict, optimizer, scheduler,logger, epoch, metric_dict, cfg.use_seg, cfg.use_cls, awl)
         
         save_model(net, optimizer, epoch ,work_dir, distributed)
     if cfg.val:

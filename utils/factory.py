@@ -31,7 +31,7 @@ def get_loss_dict(cfg):
     w = torch.ones(cfg.griding_num + 1).cuda()
     w[-1] = 0.5
 
-    if cfg.use_aux:
+    if cfg.use_seg and cfg.use_cls:
         loss_dict = {
             'name': ['cls_loss', 'relation_loss', 'aux_loss', 'relation_dis'],
             'op': [SoftmaxFocalLoss(2, weight=w), ParsingRelationLoss(), torch.nn.CrossEntropyLoss(ignore_index=255), ParsingRelationDis()],
@@ -39,6 +39,13 @@ def get_loss_dict(cfg):
             'weight': [cfg.cls_loss_w, cfg.sim_loss_w,  cfg.seg_loss_w, cfg.shp_loss_w],
             # 'weight': [1.0, cfg.sim_loss_w, 1.0, cfg.shp_loss_w],
             'data_src': [('cls_out', 'cls_label'), ('cls_out',), ('seg_out', 'seg_label'), ('cls_out',)]
+        }
+    elif cfg.use_seg:
+        loss_dict = {
+            'name': ['aux_loss'],
+            'op': [torch.nn.CrossEntropyLoss(ignore_index=255)],
+            'weight': [cfg.seg_loss_w],
+            'data_src': [('seg_out', 'seg_label')]
         }
     else:
         loss_dict = {
@@ -53,13 +60,20 @@ def get_loss_dict(cfg):
 
 def get_metric_dict(cfg):
 
-    if cfg.use_aux:
+    if cfg.use_seg and cfg.use_cls:
         metric_dict = {
             'name': ['top1', 'top2', 'top3', 'iou'],
             'best_metric':{'top1':0, 'top2':0, 'top3':0, 'iou':0},
             # 'op': [MultiLabelAcc(), AccTopk(cfg.griding_num, 2), AccTopk(cfg.griding_num, 3), Metric_mIoU(cfg.num_lanes+1)],
             'op': [MultiLabelAcc(), AccTopk(cfg.griding_num, 2), AccTopk(cfg.griding_num, 3), Metric_mIoU(19)],
             'data_src': [('cls_out', 'cls_label'), ('cls_out', 'cls_label'), ('cls_out', 'cls_label'), ('seg_out', 'seg_label')]
+        }
+    elif cfg.use_seg:
+        metric_dict = {
+            'name': ['iou'],
+            'best_metric':{'iou':0},
+            'op': [Metric_mIoU(19)],
+            'data_src': [('seg_out', 'seg_label')]
         }
     else:
         metric_dict = {

@@ -4,7 +4,7 @@ data_root = "/home/pantengteng/datasets/bdd100k/seg"
 
 # TRAIN
 epoch = 100
-batch_size = 4#32
+batch_size = 2 #4#32
 optimizer = 'SGD' #'Adam'#['SGD','Adam']
 learning_rate = 0.01 #0.1#0.001
 weight_decay = 1e-4
@@ -16,17 +16,22 @@ gamma  = 0.1
 warmup = 'linear' #None#
 warmup_iters = 200#100#695
 
+# VAL
+val = True
+val_batch_size = 2
+
 # NETWORK
-use_aux = True
+use_cls = False
+use_seg = True
 griding_num = 200
 backbone = '18'
 
 # LOSS
 # awl = 2
-cls_loss_w  = 1 # 
-seg_loss_w = 2#-1 #2
-sim_loss_w = 0.2#0.0# 0.1 relation_loss
-shp_loss_w = 0.1#0.0# 0.1 relation_dis
+cls_loss_w  = 1 #
+seg_loss_w = 2 #-1 #2
+sim_loss_w = 0 #0.2#0.0# 0.1 relation_loss
+shp_loss_w = 0 #0.1#0.0# 0.1 relation_dis
 
 # EXP
 note = ''
@@ -34,7 +39,7 @@ note = ''
 log_path = "/data/pantengteng/tensorboard_logs"# "/home/pantengteng/Programs/tensorboard_logs"
 
 # FINETUNE or RESUME MODEL PATH
-finetune = "./tusimple_18.pth"#None #/culane_18.pth"
+finetune = None #"./tusimple_18.pth"#None #/culane_18.pth"
 resume = None
  
 # TEST
