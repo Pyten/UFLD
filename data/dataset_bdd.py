@@ -11,7 +11,7 @@ def loader_func(path):
     return Image.open(path)
 
 
-class LaneTestDataset(torch.utils.data.Dataset):
+class BddLaneTestDataset(torch.utils.data.Dataset):
     def __init__(self, path, list_path, img_transform=None):
         super(LaneTestDataset, self).__init__()
         self.path = path
@@ -35,9 +35,9 @@ class LaneTestDataset(torch.utils.data.Dataset):
         return len(self.list)
 
 
-class LaneClsDataset(torch.utils.data.Dataset):
+class BddLaneClsDataset(torch.utils.data.Dataset):
     def __init__(self, path, list_path, img_transform = None,target_transform = None,simu_transform = None, griding_num=50, load_name = False,
-                row_anchor = None,use_seg=False,segment_transform=None, num_lanes = 4):
+                row_anchor = None,use_seg=False,only_road=False,segment_transform=None, num_lanes = 4):
         super(LaneClsDataset, self).__init__()
         self.img_transform = img_transform
         self.target_transform = target_transform
@@ -47,6 +47,8 @@ class LaneClsDataset(torch.utils.data.Dataset):
         self.griding_num = griding_num
         self.load_name = load_name
         self.use_seg = use_seg
+        # Pyten-20201021-OnlySegRoadandOthers
+        self.only_road=only_road
         self.num_lanes = num_lanes
 
         with open(list_path, 'r') as f:
@@ -70,6 +72,7 @@ class LaneClsDataset(torch.utils.data.Dataset):
         # Pyten-AddSegLabels
         seg_label_path = os.path.join(self.path, "seg_labels/" + label_name + ".png")
         seg_label = loader_func(seg_label_path)
+
         # Pyten-Preprocess
         # label = bdd_preprocess(label)
 
@@ -94,6 +97,10 @@ class LaneClsDataset(torch.utils.data.Dataset):
         if self.use_seg:
             assert self.segment_transform is not None
             seg_label = self.segment_transform(seg_label)
+            # Pyten-20201021-OnlySegRoadandOthers
+            if self.only_road:
+                seg_label[seg_label!=0] = 1
+
 
         if self.img_transform is not None:
             img = self.img_transform(img)

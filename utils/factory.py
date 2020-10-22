@@ -65,14 +65,14 @@ def get_metric_dict(cfg):
             'name': ['top1', 'top2', 'top3', 'iou'],
             'best_metric':{'top1':0, 'top2':0, 'top3':0, 'iou':0},
             # 'op': [MultiLabelAcc(), AccTopk(cfg.griding_num, 2), AccTopk(cfg.griding_num, 3), Metric_mIoU(cfg.num_lanes+1)],
-            'op': [MultiLabelAcc(), AccTopk(cfg.griding_num, 2), AccTopk(cfg.griding_num, 3), Metric_mIoU(19)],
+            'op': [MultiLabelAcc(), AccTopk(cfg.griding_num, 2), AccTopk(cfg.griding_num, 3), Metric_mIoU(cfg.seg_class_num)],
             'data_src': [('cls_out', 'cls_label'), ('cls_out', 'cls_label'), ('cls_out', 'cls_label'), ('seg_out', 'seg_label')]
         }
     elif cfg.use_seg:
         metric_dict = {
             'name': ['iou'],
             'best_metric':{'iou':0},
-            'op': [Metric_mIoU(19)],
+            'op': [Metric_mIoU(cfg.seg_class_num)],
             'data_src': [('seg_out', 'seg_label')]
         }
     else:

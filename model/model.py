@@ -86,7 +86,7 @@ class AtrousSpatialPyramidPoolingModule(torch.nn.Module):
         return out
 
 class parsingNet(torch.nn.Module):
-    def __init__(self, size=(288, 800), pretrained=True, backbone='50', cls_dim=(37, 10, 4), use_seg=False, use_cls=True):
+    def __init__(self, size=(288, 800), pretrained=True, backbone='50', cls_dim=(37, 10, 4), use_seg=False, use_cls=True, seg_class_num=19):
         super(parsingNet, self).__init__()
 
         self.size = size
@@ -97,6 +97,7 @@ class parsingNet(torch.nn.Module):
         self.use_seg = use_seg
         self.use_cls = use_cls
         self.total_dim = np.prod(cls_dim)
+        self.class_num = seg_class_num
 
         # Pyten-20201020-TestSeperateModel
         # input : nchw,
@@ -143,7 +144,7 @@ class parsingNet(torch.nn.Module):
             # self.out_layer = conv_bn_relu(128,19,3,padding=1)
             self.out_layer = torch.nn.Sequential(
                 conv_bn_relu(256, 256, 3,padding=1) if backbone in ['34','18'] else conv_bn_relu(256, 256, 3, padding=1),
-                conv_bn_relu(256, 19, 3,padding=1) if backbone in ['34','18'] else conv_bn_relu(256, 19, 3, padding=1),
+                conv_bn_relu(256, self.class_num , 3,padding=1) if backbone in ['34','18'] else conv_bn_relu(256, self.class_num , 3, padding=1),
             )
 
             # Pyten-20201014-AddASPP

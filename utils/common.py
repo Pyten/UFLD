@@ -75,6 +75,9 @@ def get_args():
     parser.add_argument('--use_seg', default = None, type = str2bool)
     # Pyten-20201020-SeperateModels
     parser.add_argument('--use_cls', default = True, type = str2bool)
+    parser.add_argument('--only_seg_road', default = False, type = str2bool)
+    # Pyten-20201021-AddSegClassNumParam
+    parser.add_argument('--seg_class_num', default=19, type=int)
 
     parser.add_argument('--sim_loss_w', default = None, type = float)
     parser.add_argument('--shp_loss_w', default = None, type = float)
@@ -93,12 +96,22 @@ def merge_config():
 
     items = ['dataset','data_root','epoch','batch_size','optimizer','learning_rate',
     'weight_decay','momentum','scheduler','steps','gamma','warmup','warmup_iters',
-    'use_seg','use_cls','griding_num','backbone','sim_loss_w','shp_loss_w','note','log_path',
-    'finetune','resume', 'test_model','test_work_dir', 'num_lanes']
+    'use_seg','use_cls','only_seg_road','griding_num','backbone','sim_loss_w','shp_loss_w','note','log_path',
+    'finetune','resume', 'test_model','test_work_dir', 'num_lanes', 'seg_class_num']
     for item in items:
         if getattr(args, item) is not None:
             dist_print('merge ', item, ' config')
             setattr(cfg, item, getattr(args, item))
+
+    # Pyten-20201020-SeperateModels
+    assert(cfg.use_cls or cfg.use_seg)
+
+    if cfg.only_seg_road:
+        cfg.seg_class_num = 2
+    # pdb.set_trace()
+    if "val_batch_size" not in cfg:
+        cfg.val_batch_size = cfg.batch_size
+
     return args, cfg
 
 

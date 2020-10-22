@@ -186,7 +186,6 @@ def val(net, data_loader, loss_dict, optimizer, scheduler,logger, epoch, metric_
 if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True
     args, cfg = merge_config()
-    assert(cfg.use_cls or cfg.use_seg)
 
     work_dir = get_work_dir(cfg)
 
@@ -201,11 +200,11 @@ if __name__ == "__main__":
     dist_print(cfg)
     assert cfg.backbone in ['18','34','50','101','152','50next','101next','50wide','101wide']
 
-    train_loader, cls_num_per_lane = get_train_loader(cfg.batch_size, cfg.data_root, cfg.griding_num, cfg.dataset, cfg.use_seg, distributed, cfg.num_lanes)
+    train_loader, cls_num_per_lane = get_train_loader(cfg.batch_size, cfg.data_root, cfg.griding_num, cfg.dataset, cfg.use_seg, distributed, cfg.num_lanes, cfg.only_seg_road)
     if cfg.val:
-        val_loader = get_val_loader(cfg.val_batch_size, cfg.data_root, cfg.griding_num, cfg.dataset, cfg.use_seg, distributed, cfg.num_lanes)
+        val_loader = get_val_loader(cfg.val_batch_size, cfg.data_root, cfg.griding_num, cfg.dataset, cfg.use_seg, distributed, cfg.num_lanes, cfg.only_seg_road)
     
-    net = parsingNet(pretrained = True, backbone=cfg.backbone,cls_dim = (cfg.griding_num+1,cls_num_per_lane, cfg.num_lanes),use_seg=cfg.use_seg,use_cls=cfg.use_cls).cuda()
+    net = parsingNet(pretrained = True, backbone=cfg.backbone,cls_dim = (cfg.griding_num+1,cls_num_per_lane, cfg.num_lanes),use_seg=cfg.use_seg,use_cls=cfg.use_cls,seg_class_num=cfg.seg_class_num).cuda()
     # Pyten-20201015-AddAutoWeightedLoss
     if "awl" in cfg:
         awl = AutomaticWeightedLoss(cfg.awl)
