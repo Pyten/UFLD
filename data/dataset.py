@@ -71,7 +71,7 @@ class LaneClsDataset(torch.utils.data.Dataset):
     
 
         if self.simu_transform is not None:
-            img, label = self.simu_transform(img, label)
+            img, label = self.simu_transform(img, [label])
         lane_pts = self._get_index(label)
         # get the coordinates of lanes at row anchors
 

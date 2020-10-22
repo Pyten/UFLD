@@ -1,10 +1,10 @@
 # DATA
 dataset='CULane'
-data_root = "/home/pantengteng/datasets/CULane"
+data_root = "/data/pantengteng/CULane"
 
 # TRAIN
 epoch = 50
-batch_size = 32
+batch_size = 32#64
 optimizer = 'SGD'  #['SGD','Adam']
 learning_rate = 0.1
 weight_decay = 1e-4
@@ -16,8 +16,12 @@ gamma  = 0.1
 warmup = 'linear'
 warmup_iters = 695
 
+# VAL
+val = True #False
+# val_batch_size = 16
+
 # NETWORK
-use_seg = True
+use_seg = False
 griding_num = 200
 backbone = '18'
 
@@ -28,10 +32,10 @@ shp_loss_w = 0.0
 # EXP
 note = ''
 
-log_path = "/home/pantengteng/Programs/tensorboard_logs"
+log_path = "/data/pantengteng/tensorboard_logs"
 
 # FINETUNE or RESUME MODEL PATH
-finetune = None
+finetune = None #"./culane_18.pth"#None
 resume = None
 
 # TEST

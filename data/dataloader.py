@@ -5,9 +5,10 @@ import torchvision.transforms as transforms
 import data.mytransforms as mytransforms
 from data.constant import tusimple_row_anchor, culane_row_anchor
 # Pyten-20201009-Change
-from data.dataset_bdd import LaneClsDataset, LaneTestDataset
+from data.dataset_bdd import BddLaneClsDataset, BddLaneTestDataset
+from data.dataset import LaneClsDataset, LaneTestDataset
 
-def get_train_loader(batch_size, data_root, griding_num, dataset, use_seg, distributed, num_lanes):
+def get_train_loader(batch_size, data_root, griding_num, dataset, use_seg, distributed, num_lanes, only_seg_road=False):
     target_transform = transforms.Compose([
         mytransforms.FreeScaleMask((288, 800)),
         mytransforms.MaskToTensor(),
@@ -48,13 +49,14 @@ def get_train_loader(batch_size, data_root, griding_num, dataset, use_seg, distr
         cls_num_per_lane = 18
     # Pyten-20201010-AddBdd
     elif dataset == 'Bdd100k':
-        train_dataset = LaneClsDataset(data_root,
+        # Pyten-20201021-OnlySegRoadandOthers
+        train_dataset = BddLaneClsDataset(data_root,
                                            os.path.join(data_root, 'train.txt'), #new_train.txt
                                            img_transform=img_transform, target_transform=target_transform,
                                            simu_transform = simu_transform_bdd,
                                            griding_num=griding_num, 
                                            row_anchor = tusimple_row_anchor,
-                                           segment_transform=segment_transform_bdd,use_seg=use_seg, num_lanes = num_lanes)
+                                           segment_transform=segment_transform_bdd, use_seg=use_seg, only_road=only_seg_road, num_lanes = num_lanes)
         # cls_num_per_lane = 56
         cls_num_per_lane = 56
 
@@ -80,7 +82,7 @@ def get_train_loader(batch_size, data_root, griding_num, dataset, use_seg, distr
     return train_loader, cls_num_per_lane
 
 # Pyten-20201019-Add_val_loader
-def get_val_loader(batch_size, data_root, griding_num, dataset, use_seg, distributed, num_lanes):
+def get_val_loader(batch_size, data_root, griding_num, dataset, use_seg, distributed, num_lanes, only_seg_road=False):
     target_transform = transforms.Compose([
         mytransforms.FreeScaleMask((288, 800)),
         mytransforms.MaskToTensor(),
@@ -90,6 +92,10 @@ def get_val_loader(batch_size, data_root, griding_num, dataset, use_seg, distrib
         transforms.ToTensor(),
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ])
+    segment_transform = transforms.Compose([
+        mytransforms.FreeScaleMask((36, 100)),
+        mytransforms.MaskToTensor(),
+    ])
     # Pyten-20201010-AddBddTrans
     segment_transform_bdd = transforms.Compose([
         mytransforms.FreeScaleMask((288, 800)),
@@ -98,7 +104,7 @@ def get_val_loader(batch_size, data_root, griding_num, dataset, use_seg, distrib
     
     if dataset == 'CULane':
         val_dataset = LaneClsDataset(data_root,
-                                           os.path.join(data_root, 'list/train_gt.txt'),
+                                           os.path.join(data_root, 'list/val_gt.txt'),
                                            img_transform=img_transform, target_transform=target_transform,
                                            simu_transform = None,
                                            segment_transform=segment_transform,
@@ -106,13 +112,13 @@ def get_val_loader(batch_size, data_root, griding_num, dataset, use_seg, distrib
                                            griding_num=griding_num, use_seg=use_seg, num_lanes = num_lanes)
 
     elif dataset == 'Bdd100k':
-        val_dataset = LaneClsDataset(data_root,
+        val_dataset = BddLaneClsDataset(data_root,
                                            os.path.join(data_root, 'val.txt'),
                                            img_transform=img_transform, target_transform=target_transform,
                                            simu_transform = None,
-                                           griding_num=griding_num, 
+                                           griding_num=griding_num,
                                            row_anchor = tusimple_row_anchor,
-                                           segment_transform=segment_transform_bdd,use_seg=use_seg, num_lanes = num_lanes)
+                                           segment_transform=segment_transform_bdd,use_seg=use_seg, only_road=only_seg_road, num_lanes = num_lanes)
 
     elif dataset == 'Tusimple':
         val_dataset = LaneClsDataset(data_root,
