@@ -23,13 +23,15 @@ val_batch_size = 2
 # NETWORK
 use_cls = False
 use_seg = True
+only_seg_road = True
+seg_class_num = 2 # optional
 griding_num = 200
 backbone = '18'
 
 # LOSS
 # awl = 2
 cls_loss_w  = 1 #
-seg_loss_w = 2 #-1 #2
+seg_loss_w = 1 #2 #-1 #2
 sim_loss_w = 0 #0.2#0.0# 0.1 relation_loss
 shp_loss_w = 0 #0.1#0.0# 0.1 relation_dis
 
@@ -48,6 +50,3 @@ test_work_dir = None
 save_prefix = "new_5_2_"
 
 num_lanes = 4#14
-
-
-

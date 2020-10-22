@@ -78,6 +78,7 @@ def train(net, data_loader, loss_dict, optimizer, scheduler,logger, epoch, metri
     t_data_0 = time.time()
     # Pyten-20201019-FixBug
     reset_metrics(metric_dict)
+    total_loss = 0
     for b_idx, data_label in enumerate(progress_bar):
         t_data_1 = time.time()
         # reset_metrics(metric_dict)
@@ -114,23 +115,26 @@ def train(net, data_loader, loss_dict, optimizer, scheduler,logger, epoch, metri
 
             for me_name, me_op in zip(metric_dict['name'], metric_dict['op']):
                 logger.add_scalar('train_metric/' + me_name, me_op.get(), global_step=global_step)
-        logger.add_scalar('train_meta/lr', optimizer.param_groups[0]['lr'], global_step=global_step)
+        logger.add_scalar('train/meta/lr', optimizer.param_groups[0]['lr'], global_step=global_step)
 
         if hasattr(progress_bar,'set_postfix'):
             kwargs = {me_name: '%.3f' % me_op.get() for me_name, me_op in zip(metric_dict['name'], metric_dict['op'])}
-            progress_bar.set_postfix(train_loss = '%.3f' % float(loss), 
+            progress_bar.set_postfix(loss = '%.3f' % float(loss), 
+                                    avg_loss = '%.3f' % float(total_loss / b_idx + 1)
                                     # data_time = '%.3f' % float(t_data_1 - t_data_0), 
                                     # net_time = '%.3f' % float(t_net_1 - t_net_0), 
                                     **kwargs)
         t_data_0 = time.time()
 
+    print("avg_loss_over_epoch", total_loss / len(data_loader))
+
  # Pyten-20201019-AddValidation
 def val(net, data_loader, loss_dict, optimizer, scheduler,logger, epoch, metric_dict, use_seg, use_cls, awl):
     net.eval()
-    progress_bar = dist_tqdm(val_loader)
+    progress_bar = dist_tqdm(data_loader)
     t_data_0 = time.time()
     reset_metrics(metric_dict)
-    # total_loss = 0
+    total_loss = 0
     for b_idx, data_label in enumerate(progress_bar):
         t_data_1 = time.time()
         # reset_metrics(metric_dict)
@@ -167,11 +171,14 @@ def val(net, data_loader, loss_dict, optimizer, scheduler,logger, epoch, metric_
 
         if hasattr(progress_bar,'set_postfix'):
             kwargs = {me_name: '%.3f' % me_op.get() for me_name, me_op in zip(metric_dict['name'], metric_dict['op'])}
-            progress_bar.set_postfix(test_loss = '%.3f' % float(loss), 
+            progress_bar.set_postfix(loss = '%.3f' % float(loss), 
+                                    avg_loss = '%.3f' % float(total_loss / b_idx + 1)
                                     # data_time = '%.3f' % float(t_data_1 - t_data_0), 
                                     # net_time = '%.3f' % float(t_net_1 - t_net_0), 
                                     **kwargs)
         t_data_0 = time.time()
+    
+    print("avg_loss_over_epoch", total_loss / len(data_loader))
     # Pyten-20201019-SaveBestMetric
     update_best_metric = True
     for me_name, me_op in zip(metric_dict['name'], metric_dict['op']):
@@ -244,11 +251,13 @@ if __name__ == "__main__":
     for epoch in range(resume_epoch, cfg.epoch):
         # pdb.set_trace()
         print("epoch:", epoch)
+        print("trainging...")
         train(net, train_loader, loss_dict, optimizer, scheduler,logger, epoch, metric_dict, cfg.use_seg, cfg.use_cls, awl)
         
         # Pyten-20201019-AddValidation
         if cfg.val:
-            val(net, train_loader, loss_dict, optimizer, scheduler,logger, epoch, metric_dict, cfg.use_seg, cfg.use_cls, awl)
+            print("validating...")
+            val(net, val_loader, loss_dict, optimizer, scheduler,logger, epoch, metric_dict, cfg.use_seg, cfg.use_cls, awl)
         
         save_model(net, optimizer, epoch ,work_dir, distributed)
     if cfg.val:
