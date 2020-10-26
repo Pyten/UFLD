@@ -80,6 +80,9 @@ def update_metrics(metric_dict, pair_data):
     for i in range(len(metric_dict['name'])):
         metric_op = metric_dict['op'][i]
         data_src = metric_dict['data_src'][i]
+        # Pyten-20201023-AddMetricFilter
+        if data_src[0] not in pair_data:
+            continue
         metric_op.update(pair_data[data_src[0]], pair_data[data_src[1]])
 
 
