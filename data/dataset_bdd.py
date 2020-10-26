@@ -13,7 +13,7 @@ def loader_func(path):
 
 class BddLaneTestDataset(torch.utils.data.Dataset):
     def __init__(self, path, list_path, img_transform=None):
-        super(LaneTestDataset, self).__init__()
+        super(BddLaneTestDataset, self).__init__()
         self.path = path
         self.img_transform = img_transform
         with open(list_path, 'r') as f:
@@ -38,7 +38,7 @@ class BddLaneTestDataset(torch.utils.data.Dataset):
 class BddLaneClsDataset(torch.utils.data.Dataset):
     def __init__(self, path, list_path, img_transform = None,target_transform = None,simu_transform = None, griding_num=50, load_name = False,
                 row_anchor = None,use_seg=False,only_road=False,segment_transform=None, num_lanes = 4):
-        super(LaneClsDataset, self).__init__()
+        super(BddLaneClsDataset, self).__init__()
         self.img_transform = img_transform
         self.target_transform = target_transform
         self.segment_transform = segment_transform
@@ -70,12 +70,12 @@ class BddLaneClsDataset(torch.utils.data.Dataset):
         label = loader_func(label_path)
 
         # Pyten-AddSegLabels
-        seg_label_path = os.path.join(self.path, "seg_labels/" + label_name + ".png")
-        seg_label = loader_func(seg_label_path)
+        if self.use_seg:
+            seg_label_path = os.path.join(self.path, "seg_labels/" + label_name + ".png")
+            seg_label = loader_func(seg_label_path)
 
         # Pyten-Preprocess
         # label = bdd_preprocess(label)
-
         img_path = os.path.join(self.path, "seg_images/" + img_name + ".jpg" )
         img = loader_func(img_path)
     

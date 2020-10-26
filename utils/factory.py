@@ -58,9 +58,14 @@ def get_loss_dict(cfg):
     return loss_dict
 
 
-def get_metric_dict(cfg):
+def get_metric_dict(cfg, use_seg=None, use_cls=None):
 
-    if cfg.use_seg and cfg.use_cls:
+    if use_seg == None:
+        use_seg = cfg.use_seg
+    if use_cls == None:
+        use_cls = cfg.use_cls
+
+    if use_seg and use_cls:
         metric_dict = {
             'name': ['top1', 'top2', 'top3', 'iou'],
             'best_metric':{'top1':0, 'top2':0, 'top3':0, 'iou':0},
@@ -68,20 +73,23 @@ def get_metric_dict(cfg):
             'op': [MultiLabelAcc(), AccTopk(cfg.griding_num, 2), AccTopk(cfg.griding_num, 3), Metric_mIoU(cfg.seg_class_num)],
             'data_src': [('cls_out', 'cls_label'), ('cls_out', 'cls_label'), ('cls_out', 'cls_label'), ('seg_out', 'seg_label')]
         }
-    elif cfg.use_seg:
+    elif use_seg:
         metric_dict = {
             'name': ['iou'],
             'best_metric':{'iou':0},
             'op': [Metric_mIoU(cfg.seg_class_num)],
             'data_src': [('seg_out', 'seg_label')]
         }
-    else:
+    elif use_cls:
         metric_dict = {
             'name': ['top1', 'top2', 'top3'],
             'best_metric':{'top1':0, 'top2':0, 'top3':0},
             'op': [MultiLabelAcc(), AccTopk(cfg.griding_num, 2), AccTopk(cfg.griding_num, 3)],
             'data_src': [('cls_out', 'cls_label'), ('cls_out', 'cls_label'), ('cls_out', 'cls_label')]
         }
+    else:
+        print("wrong config for metirc setting!")
+        raise ValueError
     
     return metric_dict
 

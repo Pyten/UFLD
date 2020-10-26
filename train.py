@@ -74,7 +74,7 @@ def calc_loss(loss_dict, results, logger, global_step, mode = "train", awl=None)
 
 def train(net, data_loader, loss_dict, optimizer, scheduler,logger, epoch, metric_dict, use_seg, use_cls, awl):
     net.train()
-    progress_bar = dist_tqdm(train_loader)
+    progress_bar = dist_tqdm(data_loader)
     t_data_0 = time.time()
     # Pyten-20201019-FixBug
     reset_metrics(metric_dict)
@@ -107,8 +107,8 @@ def train(net, data_loader, loss_dict, optimizer, scheduler,logger, epoch, metri
                 logger.add_image("train_seg/label",seg_color_label, global_step=global_step, dataformats='HWC')
             # Pyten-20201012-anchors需要根据参数调整 
             if use_cls:
-                cls_color_out = decode_cls_color_map(data_label[0][0], results["cls_out"][0], tusimple_row_anchor, cfg)
-                cls_color_label = decode_cls_color_map(data_label[0][0], results["cls_label"][0], tusimple_row_anchor, cfg)
+                cls_color_out = decode_cls_color_map(data_label[0][0], results["cls_out"][0], cfg)
+                cls_color_label = decode_cls_color_map(data_label[0][0], results["cls_label"][0], cfg)
                 logger.add_image("train_cls/predict", cls_color_out, global_step=global_step, dataformats='HWC')
                 logger.add_image("train_cls/label", cls_color_label, global_step=global_step, dataformats='HWC')
             #  results: {'cls_out': cls_out, 'cls_label': cls_label, 'seg_out':seg_out, 'seg_label': seg_label}
@@ -159,8 +159,8 @@ def val(net, data_loader, loss_dict, optimizer, scheduler,logger, epoch, metric_
                 logger.add_image("val_seg/predict", seg_color_out, global_step=global_step, dataformats='HWC')
                 logger.add_image("val_seg/label",seg_color_label, global_step=global_step, dataformats='HWC')
             if use_cls:
-                cls_color_out = decode_cls_color_map(data_label[0][0], results["cls_out"][0], tusimple_row_anchor, cfg)
-                cls_color_label = decode_cls_color_map(data_label[0][0], results["cls_label"][0], tusimple_row_anchor, cfg)
+                cls_color_out = decode_cls_color_map(data_label[0][0], results["cls_out"][0], cfg)
+                cls_color_label = decode_cls_color_map(data_label[0][0], results["cls_label"][0], cfg)
                 logger.add_image("val_cls/predict", cls_color_out, global_step=global_step, dataformats='HWC')
                 logger.add_image("val_cls/label", cls_color_label, global_step=global_step, dataformats='HWC')
                 #  results: {'cls_out': cls_out, 'cls_label': cls_label, 'seg_out':seg_out, 'seg_label': seg_label}
@@ -239,7 +239,6 @@ if __name__ == "__main__":
         resume_epoch = int(os.path.split(cfg.resume)[1][2:5]) + 1
     else:
         resume_epoch = 0
-
 
     scheduler = get_scheduler(optimizer, cfg, len(train_loader))
     dist_print(len(train_loader))

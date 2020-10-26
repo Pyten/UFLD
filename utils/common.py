@@ -15,16 +15,16 @@ def decode_seg_color_map(label):
 
     return color_map
 
-def decode_cls_color_map(img, label, anchors, cfg): # img, 
+def decode_cls_color_map(img, label, cfg): # img, 
     """
     img: transformed img，tensor
     label: prediction or label
-    anchors: anchors
+    cfg: anchors,griding_num
     """
     # ?(288,800,3)
     c, h, w  = img.shape
     grid_width = w / cfg.griding_num
-    anchor_height = anchors[1] - anchors[0]
+    anchor_height = cfg.anchors[1] - cfg.anchors[0]
     # if h != 288:
     #         scale_f = lambda x : int((x * 1.0/288) * h)
     #         anchor_list = list(map(scale_f, anchors))
@@ -38,7 +38,7 @@ def decode_cls_color_map(img, label, anchors, cfg): # img,
             grid_index = label[anchor, lane]
             # pdb.set_trace()
             # if grid_index < cfg.griding_num:
-            color_map[anchors[anchor] - anchor_height:anchors[anchor], int(grid_width*(grid_index)):int(grid_width*(grid_index + 1)), :] =  torch.tensor(trainId2color[lane]).float()
+            color_map[cfg.anchors[anchor] - anchor_height:cfg.anchors[anchor], int(grid_width*(grid_index)):int(grid_width*(grid_index + 1)), :] =  torch.tensor(trainId2color[lane]).float()
     return color_map
 
 
