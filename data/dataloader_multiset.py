@@ -11,15 +11,15 @@ from data.dataset import LaneClsDataset
 
 def get_cls_train_loader(batch_size, data_root, griding_num, dataset, distributed, num_lanes, cfg, use_seg=False):
     target_transform = transforms.Compose([
-        mytransforms.FreeScaleMask((288, 800)),
+        mytransforms.FreeScaleMask((cfg.size_h, cfg.size_w)),
         mytransforms.MaskToTensor(),
     ])
     segment_transform = transforms.Compose([
-        mytransforms.FreeScaleMask((36, 100)),
+        mytransforms.FreeScaleMask((cfg.size_h, cfg.size_w)),
         mytransforms.MaskToTensor(),
     ])
     img_transform = transforms.Compose([
-        transforms.Resize((288, 800)),
+        transforms.Resize((cfg.size_h, cfg.size_w)),
         transforms.ToTensor(),
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ])
@@ -30,7 +30,7 @@ def get_cls_train_loader(batch_size, data_root, griding_num, dataset, distribute
     ])
     # Pyten-20201010-AddBddTrans
     segment_transform_bdd = transforms.Compose([
-        mytransforms.FreeScaleMask((288, 800)),
+        mytransforms.FreeScaleMask((cfg.size_h, cfg.size_w)),
         mytransforms.MaskToTensor(),
     ])
     
@@ -81,17 +81,17 @@ def get_cls_train_loader(batch_size, data_root, griding_num, dataset, distribute
     else:
         sampler = torch.utils.data.RandomSampler(train_dataset)
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, sampler = sampler, num_workers=4)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, sampler = sampler, num_workers=cfg.loader_workers)
 
     return train_loader, cls_num_per_lane
 
-def get_seg_train_loader(batch_size, data_root, dataset, distributed):
+def get_seg_train_loader(batch_size, data_root, dataset, distributed, cfg):
     target_transform = transforms.Compose([
-        mytransforms.FreeScaleMask((288, 800)),
+        mytransforms.FreeScaleMask((cfg.size_h, cfg.size_w)),
         mytransforms.MaskToTensor(),
     ])
     img_transform = transforms.Compose([
-        transforms.Resize((288, 800)),
+        transforms.Resize((cfg.size_h, cfg.size_w)),
         transforms.ToTensor(),
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ])
@@ -123,28 +123,28 @@ def get_seg_train_loader(batch_size, data_root, dataset, distributed):
     else:
         sampler = torch.utils.data.RandomSampler(train_dataset)
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, sampler = sampler, num_workers=4)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, sampler = sampler, num_workers=cfg.loader_workers) #4
 
     return train_loader
 
 # Pyten-20201019-Add_val_loader
 def get_cls_val_loader(batch_size, data_root, griding_num, dataset, distributed, num_lanes, cfg, use_seg=False):
     target_transform = transforms.Compose([
-        mytransforms.FreeScaleMask((288, 800)),
+        mytransforms.FreeScaleMask((cfg.size_h, cfg.size_w)),
         mytransforms.MaskToTensor(),
     ])
     img_transform = transforms.Compose([
-        transforms.Resize((288, 800)),
+        transforms.Resize((cfg.size_h, cfg.size_w)),
         transforms.ToTensor(),
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ])
     segment_transform = transforms.Compose([
-        mytransforms.FreeScaleMask((36, 100)),
+        mytransforms.FreeScaleMask((cfg.size_h, cfg.size_w)),
         mytransforms.MaskToTensor(),
     ])
     # Pyten-20201010-AddBddTrans
     segment_transform_bdd = transforms.Compose([
-        mytransforms.FreeScaleMask((288, 800)),
+        mytransforms.FreeScaleMask((cfg.size_h, cfg.size_w)),
         mytransforms.MaskToTensor(),
     ])
     
@@ -183,17 +183,17 @@ def get_cls_val_loader(batch_size, data_root, griding_num, dataset, distributed,
     else:
         sampler = torch.utils.data.RandomSampler(val_dataset)
 
-    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, sampler = sampler, num_workers=4)
+    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, sampler = sampler, num_workers=cfg.loader_workers) #4
 
     return val_loader
 
-def get_seg_val_loader(batch_size, seg_data_root, dataset, distributed):
+def get_seg_val_loader(batch_size, seg_data_root, dataset, distributed, cfg):
     target_transform = transforms.Compose([
-        mytransforms.FreeScaleMask((288, 800)),
+        mytransforms.FreeScaleMask((cfg.size_h, cfg.size_w)),
         mytransforms.MaskToTensor(),
     ])
     img_transform = transforms.Compose([
-        transforms.Resize((288, 800)),
+        transforms.Resize((cfg.size_h, cfg.size_w)),
         transforms.ToTensor(),
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ])
@@ -216,10 +216,11 @@ def get_seg_val_loader(batch_size, seg_data_root, dataset, distributed):
         raise NotImplementedError
 
     if distributed:
+        # batch_size = batch_size / args.n
         sampler = torch.utils.data.distributed.DistributedSampler(val_dataset)
     else:
         sampler = torch.utils.data.RandomSampler(val_dataset)
 
-    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, sampler = sampler, num_workers=4)
+    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, sampler = sampler, num_workers=cfg.loader_workers) #4
 
     return val_loader

@@ -120,7 +120,7 @@ def train(net, data_loader, loss_dict, optimizer, scheduler,logger, epoch, metri
         if hasattr(progress_bar,'set_postfix'):
             kwargs = {me_name: '%.3f' % me_op.get() for me_name, me_op in zip(metric_dict['name'], metric_dict['op'])}
             progress_bar.set_postfix(loss = '%.3f' % float(loss), 
-                                    avg_loss = '%.3f' % float(total_loss / b_idx + 1)
+                                    avg_loss = '%.3f' % float(total_loss / (b_idx + 1)),
                                     # data_time = '%.3f' % float(t_data_1 - t_data_0), 
                                     # net_time = '%.3f' % float(t_net_1 - t_net_0), 
                                     **kwargs)
@@ -207,7 +207,7 @@ if __name__ == "__main__":
     dist_print(cfg)
     assert cfg.backbone in ['18','34','50','101','152','50next','101next','50wide','101wide']
 
-    train_loader, cls_num_per_lane = get_train_loader(cfg.batch_size, cfg.data_root, cfg.griding_num, cfg.dataset, cfg.use_seg, distributed, cfg.num_lanes, cfg.only_seg_road)
+    train_loader, cls_num_per_lane = get_train_loader(cfg.batch_size, cfg.data_root, cfg.griding_num, cfg.dataset, cfg.use_seg, distributed, cfg.num_lanes, cfg, cfg.only_seg_road)
     if cfg.val:
         val_loader = get_val_loader(cfg.val_batch_size, cfg.data_root, cfg.griding_num, cfg.dataset, cfg.use_seg, distributed, cfg.num_lanes, cfg.only_seg_road)
     

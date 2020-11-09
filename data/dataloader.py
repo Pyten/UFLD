@@ -8,7 +8,7 @@ from data.constant import tusimple_row_anchor, culane_row_anchor
 from data.dataset_bdd import BddLaneClsDataset, BddLaneTestDataset
 from data.dataset import LaneClsDataset, LaneTestDataset
 
-def get_train_loader(batch_size, data_root, griding_num, dataset, use_seg, distributed, num_lanes, only_seg_road=False):
+def get_train_loader(batch_size, data_root, griding_num, dataset, use_seg, distributed, num_lanes, cfg, only_seg_road=False):
     target_transform = transforms.Compose([
         mytransforms.FreeScaleMask((288, 800)),
         mytransforms.MaskToTensor(),
@@ -39,6 +39,7 @@ def get_train_loader(batch_size, data_root, griding_num, dataset, use_seg, distr
     ])
     
     if dataset == 'CULane':
+        cfg.anchors = culane_row_anchor
         train_dataset = LaneClsDataset(data_root,
                                            os.path.join(data_root, 'list/train_gt.txt'),
                                            img_transform=img_transform, target_transform=target_transform,
@@ -49,6 +50,7 @@ def get_train_loader(batch_size, data_root, griding_num, dataset, use_seg, distr
         cls_num_per_lane = 18
     # Pyten-20201010-AddBdd
     elif dataset == 'Bdd100k':
+        cfg.anchors = tusimple_row_anchor
         # Pyten-20201021-OnlySegRoadandOthers
         train_dataset = BddLaneClsDataset(data_root,
                                            os.path.join(data_root, 'train.txt'), #new_train.txt
@@ -61,6 +63,7 @@ def get_train_loader(batch_size, data_root, griding_num, dataset, use_seg, distr
         cls_num_per_lane = 56
 
     elif dataset == 'Tusimple':
+        cfg.anchors = tusimple_row_anchor
         train_dataset = LaneClsDataset(data_root,
                                            os.path.join(data_root, 'train_gt.txt'),
                                            img_transform=img_transform, target_transform=target_transform,

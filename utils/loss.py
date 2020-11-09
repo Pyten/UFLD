@@ -37,12 +37,13 @@ class SoftmaxFocalLoss(nn.Module):
             self.nll = nn.NLLLoss(ignore_index=ignore_lb)
 
     def forward(self, logits, labels):
+        N, C, H, W = logits.size()
         scores = F.softmax(logits, dim=1)
         factor = torch.pow(1.-scores, self.gamma)
         log_score = F.log_softmax(logits, dim=1)
         log_score = factor * log_score
         loss = self.nll(log_score, labels)
-        return loss
+        return loss / N
 
 class ParsingRelationLoss(nn.Module):
     def __init__(self):
