@@ -90,8 +90,8 @@ class parsingNet(torch.nn.Module):
         super(parsingNet, self).__init__()
 
         self.size = size
-        self.w = size[0]
-        self.h = size[1]
+        self.w = size[1]
+        self.h = size[0]
         self.cls_dim = cls_dim # (num_gridding, num_cls_per_lane, num_of_lanes)
         # num_cls_per_lane is the number of row anchors
         self.use_seg = use_seg
@@ -156,7 +156,9 @@ class parsingNet(torch.nn.Module):
             initialize_weights(self.aux_header2,self.aux_header3,self.aux_header4,self.aux_combine) #,self.aspp)
         if self.use_cls:
             self.cls = torch.nn.Sequential(
-                torch.nn.Linear(1800, 2048),
+                # torch.nn.Linear(1800, 2048),
+                # size_h * size_w / (32*32) * 8 
+                torch.nn.Linear(int(self.h * self.w / 128), 2048),
                 torch.nn.ReLU(),
                 torch.nn.Linear(2048, self.total_dim),
             )
@@ -196,7 +198,8 @@ class parsingNet(torch.nn.Module):
             aux_seg = None
 
         if self.use_cls:
-            fea = self.pool(fea).view(-1, 1800)
+            fea = self.pool(fea).view(-1, int(self.h * self.w / 128))
+            #fea = self.pool(fea).view(-1, 1800)
 
             group_cls = self.cls(fea).view(-1, *self.cls_dim)
 

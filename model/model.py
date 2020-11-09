@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from model.backbone import resnet
 import numpy as np
+import torch.nn as nn
 
 class conv_bn_relu(torch.nn.Module):
     def __init__(self,in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1,bias=False):
@@ -10,9 +11,12 @@ class conv_bn_relu(torch.nn.Module):
             stride = stride, padding = padding, dilation = dilation,bias = bias)
         self.bn = torch.nn.BatchNorm2d(out_channels)
         self.relu = torch.nn.ReLU()
+        # Pyten-20201103-AddDropout
+        # self.dropout = nn.Dropout(p=0.5)
 
     def forward(self,x):
         x = self.conv(x)
+        # x = self.dropout(x)
         x = self.bn(x)
         x = self.relu(x)
         return x
@@ -90,8 +94,8 @@ class parsingNet(torch.nn.Module):
         super(parsingNet, self).__init__()
 
         self.size = size
-        self.w = size[0]
-        self.h = size[1]
+        self.w = size[1]
+        self.h = size[0]
         self.cls_dim = cls_dim # (num_gridding, num_cls_per_lane, num_of_lanes)
         # num_cls_per_lane is the number of row anchors
         self.use_seg = use_seg
@@ -103,6 +107,9 @@ class parsingNet(torch.nn.Module):
         # input : nchw,
         # output: (w+1) * sample_rows * 4
         self.model = resnet(backbone, pretrained=pretrained)
+
+        # Pyten-20201103-AddDropout
+        self.dropout = nn.Dropout(p=0.5)
 
         if self.use_seg:
             # Pyten-20201010-Addheader1
@@ -156,8 +163,12 @@ class parsingNet(torch.nn.Module):
             initialize_weights(self.aux_header2,self.aux_header3,self.aux_header4,self.aux_combine,self.aspp)
         if self.use_cls:
             self.cls = torch.nn.Sequential(
-                torch.nn.Linear(1800, 2048),
+                # torch.nn.Linear(1800, 2048),
+                # torch.nn.Linear(self.h * 2, 2048),
+                torch.nn.Linear(int(self.h * self.w / 128), 2048),
+                # Pyten-20201103-AddDropout
                 torch.nn.ReLU(),
+                nn.Dropout(p=0.5),
                 torch.nn.Linear(2048, self.total_dim),
             )
 
@@ -197,14 +208,17 @@ class parsingNet(torch.nn.Module):
 
             out3 = torch.cat([out3, x4],dim=1)
             out3 = self.aux_header3(out3)
+            out3 = self.dropout(out3)
             out2 = F.interpolate(out3,scale_factor = 2,mode='bilinear')
             
             out2 = torch.cat([out2, x2],dim=1)
             out2= self.aux_header2(out2)
+            out2 = self.dropout(out2)
             out1 = F.interpolate(out2,scale_factor = 2,mode='bilinear')
 
             out1 = torch.cat([out1, x1],dim=1)
             out1= self.aux_header1(out1)
+            out1 = self.dropout(out1)
 
             out = F.interpolate(out1,scale_factor = 4,mode='bilinear')
             aux_seg = self.out_layer(out)
@@ -213,7 +227,8 @@ class parsingNet(torch.nn.Module):
             aux_seg = None
 
         if self.use_cls:
-            fea = self.pool(fea).view(-1, 1800)
+            fea = self.pool(fea).view(-1, int(self.h * self.w / 128))
+            #fea = self.pool(fea).view(-1, self.h * 2) # 1800
 
             group_cls = self.cls(fea).view(-1, *self.cls_dim)
 
