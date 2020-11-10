@@ -39,7 +39,8 @@ def get_train_loader(batch_size, data_root, griding_num, dataset, use_seg, distr
     ])
     
     if dataset == 'CULane':
-        cfg.anchors = culane_row_anchor
+        if "anchors" not in cfg:
+            cfg.anchors = culane_row_anchor
         train_dataset = LaneClsDataset(data_root,
                                            os.path.join(data_root, 'list/train_gt.txt'),
                                            img_transform=img_transform, target_transform=target_transform,
@@ -50,7 +51,8 @@ def get_train_loader(batch_size, data_root, griding_num, dataset, use_seg, distr
         cls_num_per_lane = 18
     # Pyten-20201010-AddBdd
     elif dataset == 'Bdd100k':
-        cfg.anchors = tusimple_row_anchor
+        if "anchors" not in cfg:
+            cfg.anchors = tusimple_row_anchor
         # Pyten-20201021-OnlySegRoadandOthers
         train_dataset = BddLaneClsDataset(data_root,
                                            os.path.join(data_root, 'train.txt'), #new_train.txt
@@ -63,7 +65,8 @@ def get_train_loader(batch_size, data_root, griding_num, dataset, use_seg, distr
         cls_num_per_lane = 56
 
     elif dataset == 'Tusimple':
-        cfg.anchors = tusimple_row_anchor
+        if "anchors" not in cfg:
+            cfg.anchors = tusimple_row_anchor
         train_dataset = LaneClsDataset(data_root,
                                            os.path.join(data_root, 'train_gt.txt'),
                                            img_transform=img_transform, target_transform=target_transform,

@@ -36,19 +36,21 @@ def get_cls_train_loader(batch_size, data_root, griding_num, dataset, distribute
     
     if dataset == 'CULane':
         # Pyten-20201023-Add anchorsParam
-        cfg.anchors = culane_row_anchor
+        if "anchors" not in cfg:
+            cfg.anchors = culane_row_anchor
         train_dataset = LaneClsDataset(data_root,
                                            os.path.join(data_root, 'list/train_gt.txt'),
                                            img_transform=img_transform, target_transform=target_transform,
                                            simu_transform = simu_transform,
                                            segment_transform=segment_transform,
                                            row_anchor = cfg.anchors,
-                                           griding_num=griding_num, use_seg=use_seg, num_lanes = num_lanes)
+                                           griding_num=griding_num, use_seg=False, num_lanes = num_lanes)
         cls_num_per_lane = 18
     # Pyten-20201010-AddBdd
     elif dataset == 'Bdd100k':
         # Pyten-20201023-Add anchorsParam
-        cfg.anchors = tusimple_row_anchor
+        if "anchors" not in cfg:
+            cfg.anchors = tusimple_row_anchor
         # Pyten-20201021-OnlySegRoadandOthers
         train_dataset = BddLaneClsDataset(data_root,
                                            os.path.join(data_root, 'train.txt'), #new_train.txt
@@ -63,7 +65,8 @@ def get_cls_train_loader(batch_size, data_root, griding_num, dataset, distribute
 
     elif dataset == 'Tusimple':
         # Pyten-20201023-Add anchorsParam
-        cfg.anchors = tusimple_row_anchor
+        if "anchors" not in cfg:
+            cfg.anchors = tusimple_row_anchor
         train_dataset = LaneClsDataset(data_root,
                                            os.path.join(data_root, 'train_gt.txt'),
                                            img_transform=img_transform, target_transform=target_transform,
@@ -110,7 +113,7 @@ def get_seg_train_loader(batch_size, data_root, dataset, distributed, cfg):
 
     elif dataset == 'CityScape':
         train_dataset = SegDataset(data_root,
-                                           os.path.join(data_root, 'train_gt.txt'),
+                                           os.path.join(data_root, 'trainImages.txt'),
                                            img_transform=img_transform, target_transform=target_transform,
                                            simu_transform = simu_transform,
                                            mode="train")
@@ -207,10 +210,10 @@ def get_seg_val_loader(batch_size, seg_data_root, dataset, distributed, cfg):
 
     elif dataset == 'CityScape':
         val_dataset = SegDataset(data_root,
-                                           os.path.join(data_root, 'train_gt.txt'),
+                                           os.path.join(data_root, 'valLabels.txt'),
                                            img_transform=img_transform, target_transform=target_transform,
                                            simu_transform = None,
-                                           mode="val")
+                                           )
 
     else:
         raise NotImplementedError
