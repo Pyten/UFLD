@@ -1,4 +1,5 @@
 # DATA
+loader_workers = 8
 seg_dataset = 'Bdd100k'
 cls_dataset = 'Bdd100k'
 seg_data_root = "/home/pantengteng/datasets/bdd100k/seg"
@@ -6,11 +7,11 @@ cls_data_root = "/home/pantengteng/datasets/bdd100k/"
 
 # TRAIN
 epoch = 100
-batch_size = 2#4#32
-iters_per_ep =70000
+batch_size = 4#32
+# iters_per_ep =70000
 optimizer = 'SGD' #'Adam'#['SGD','Adam']
 learning_rate = 0.01 #0.1#0.001
-weight_decay = 1e-4
+weight_decay = 1e-3 #1e-4
 momentum = 0.9
 
 scheduler =  'cos' #['multi', 'cos']
@@ -30,7 +31,7 @@ use_seg = True
 # seg_class_num = 2 # optional
 seg_class_num = 19
 griding_num = 200
-backbone = '18'
+backbone = '101' #'18' #'101' # '18'
 
 # LOSS
 # awl = 2

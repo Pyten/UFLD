@@ -168,7 +168,7 @@ class parsingNet(torch.nn.Module):
                 torch.nn.Linear(int(self.h * self.w / 128), 2048),
                 # Pyten-20201103-AddDropout
                 torch.nn.ReLU(),
-                nn.Dropout(p=0.5),
+                nn.Dropout(p=0.3),
                 torch.nn.Linear(2048, self.total_dim),
             )
 
@@ -208,17 +208,17 @@ class parsingNet(torch.nn.Module):
 
             out3 = torch.cat([out3, x4],dim=1)
             out3 = self.aux_header3(out3)
-            out3 = self.dropout(out3)
+            # out3 = self.dropout(out3)
             out2 = F.interpolate(out3,scale_factor = 2,mode='bilinear')
             
             out2 = torch.cat([out2, x2],dim=1)
             out2= self.aux_header2(out2)
-            out2 = self.dropout(out2)
+            # out2 = self.dropout(out2)
             out1 = F.interpolate(out2,scale_factor = 2,mode='bilinear')
 
             out1 = torch.cat([out1, x1],dim=1)
             out1= self.aux_header1(out1)
-            out1 = self.dropout(out1)
+            # out1 = self.dropout(out1)
 
             out = F.interpolate(out1,scale_factor = 4,mode='bilinear')
             aux_seg = self.out_layer(out)
