@@ -54,10 +54,24 @@ class SegDataset(torch.utils.data.Dataset):
             img_name = img_name[1:]
             label_name = label_name[1:]
 
-        seg_label_path = os.path.join(self.path, "labels/" + self.mode + "/" + label_name + "_train_id.png")
+        # for bdd100k
+        # seg_label_path = os.path.join(self.path, "labels/" + self.mode + "/" + label_name + "_train_id.png")
+        # for cityscape
+        # gtFine/train/aachen/aachen_000000_000019_gtFine_labelTrainIds.png
+        # leftImg8bit/train/aachen/aachen_000000_000019_leftImg8bit.png
+        if "test" in img_name:
+            label_name = img_name.replace("leftImg8bit", "gtFine")[:-10] + "leftImg8bit_gt.png"
+        else:
+            label_name = img_name.replace("leftImg8bit", "gtFine")[:-4] + "_labelTrainIds.png"
+
+        seg_label_path = os.path.join(self.path, label_name)
         seg_label = loader_func(seg_label_path)
 
-        img_path = os.path.join(self.path, "images/" + self.mode + "/" + img_name + ".jpg" )
+        # for bdd100k
+        # img_path = os.path.join(self.path, "images/" + self.mode + "/" + img_name + ".jpg" )
+        # for cityscape
+        # os.path.exists(img_path):
+        img_path = os.path.join(self.path, img_name)
         img = loader_func(img_path)
 
         if self.simu_transform is not None:

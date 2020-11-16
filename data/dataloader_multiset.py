@@ -113,7 +113,7 @@ def get_seg_train_loader(batch_size, data_root, dataset, distributed, cfg):
 
     elif dataset == 'CityScape':
         train_dataset = SegDataset(data_root,
-                                           os.path.join(data_root, 'trainImages.txt'),
+                                           os.path.join(data_root, 'trainallImages.txt'), #'trainImages.txt'
                                            img_transform=img_transform, target_transform=target_transform,
                                            simu_transform = simu_transform,
                                            mode="train")
@@ -126,7 +126,7 @@ def get_seg_train_loader(batch_size, data_root, dataset, distributed, cfg):
     else:
         sampler = torch.utils.data.RandomSampler(train_dataset)
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, sampler = sampler, num_workers=cfg.loader_workers) #4
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, sampler = sampler, drop_last=True, num_workers=cfg.loader_workers) #4
 
     return train_loader
 
@@ -158,7 +158,7 @@ def get_cls_val_loader(batch_size, data_root, griding_num, dataset, distributed,
                                            simu_transform = None,
                                            segment_transform=segment_transform,
                                            row_anchor = cfg.anchors,
-                                           griding_num=griding_num, use_seg=use_seg, num_lanes = num_lanes)
+                                           griding_num=griding_num, use_seg=False, num_lanes = num_lanes)
 
     elif dataset == 'Bdd100k':
         val_dataset = BddLaneClsDataset(data_root,
@@ -190,7 +190,7 @@ def get_cls_val_loader(batch_size, data_root, griding_num, dataset, distributed,
 
     return val_loader
 
-def get_seg_val_loader(batch_size, seg_data_root, dataset, distributed, cfg):
+def get_seg_val_loader(batch_size, data_root, dataset, distributed, cfg):
     target_transform = transforms.Compose([
         mytransforms.FreeScaleMask((cfg.size_h, cfg.size_w)),
         mytransforms.MaskToTensor(),
@@ -202,15 +202,15 @@ def get_seg_val_loader(batch_size, seg_data_root, dataset, distributed, cfg):
     ])
     
     if dataset == 'Bdd100k':
-        val_dataset = SegDataset(seg_data_root,
-                                           os.path.join(seg_data_root, 'val_seg.txt'), 
+        val_dataset = SegDataset(data_root,
+                                           os.path.join(data_root, 'val_seg.txt'), 
                                            img_transform=img_transform, target_transform=target_transform,
                                            simu_transform = None,
                                            mode="val")
 
     elif dataset == 'CityScape':
         val_dataset = SegDataset(data_root,
-                                           os.path.join(data_root, 'valLabels.txt'),
+                                           os.path.join(data_root, 'valImages.txt'),
                                            img_transform=img_transform, target_transform=target_transform,
                                            simu_transform = None,
                                            )
