@@ -91,8 +91,10 @@ def get_args():
     parser.add_argument('--finetune', default = None, type = str)
     parser.add_argument('--resume', default = None, type = str)
     parser.add_argument('--test_model', default = None, type = str)
-    # Pyten-20201101-Add
+    # Pyten-20201101-Additems
     parser.add_argument('--save_prefix', default = None, type = str)
+    parser.add_argument('--model', default = None, type = str)
+
     parser.add_argument('--test_work_dir', default = None, type = str)
     parser.add_argument('--num_lanes', default = None, type = int)
     return parser
@@ -104,7 +106,7 @@ def merge_config():
     items = ['dataset','data_root','epoch','batch_size','optimizer','learning_rate',
     'weight_decay','momentum','scheduler','steps','gamma','warmup','warmup_iters',
     'use_seg','use_cls','only_seg_road','griding_num','backbone','sim_loss_w','shp_loss_w','note','log_path',
-    'finetune','resume', 'test_model','test_work_dir', 'num_lanes', 'seg_class_num', 'size_w', 'size_h', 'local_rank', "save_prefix"]
+    'finetune','resume', 'test_model','test_work_dir', 'num_lanes', 'seg_class_num', 'size_w', 'size_h', 'local_rank', "save_prefix", "model"]
     for item in items:
         if getattr(args, item) is not None:
             dist_print('merge ', item, ' config')

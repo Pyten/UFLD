@@ -2,7 +2,7 @@ import torch, os, datetime
 import numpy as np
 
 import pdb
-from model.model import parsingNet
+# from model.model import parsingNet
 # from model.model_fcn import parsingNet
 from data.dataloader_multiset import get_seg_train_loader, get_cls_train_loader, get_seg_val_loader, get_cls_val_loader
 
@@ -335,11 +335,19 @@ def val(net, val_seg_loader, val_cls_loader, loss_dict, scheduler,logger, epoch,
     if update_best_metric:
         for me_name, me_op in zip(metric_dict['name'], metric_dict['op']):
             metric_dict["best_metric"][me_name] = me_op.get()
-            print("best metric updated!(epoch%d)"%epoch)
+        cfg.best_epoch = epoch
+        dist_print("best metric updated!(epoch%d)"%epoch)
 
 if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True
     args, cfg = merge_config()
+
+    if args.model == "F":
+        from model.model_fcn import parsingNet
+    elif args.model == "M":
+        from model.resnet_mtan import parsingNet
+    else:
+        from model.model import parsingNet
 
     work_dir = get_work_dir(cfg)
 
@@ -407,20 +415,22 @@ if __name__ == "__main__":
     logger = get_logger(work_dir, cfg)
     #cp_projects(work_dir)
 
+    cfg.best_epoch = -1
     for epoch in range(resume_epoch, cfg.epoch):
         # pdb.set_trace()
-        print("epoch:", epoch)
-        print("trainging with {} seg data and cls {} data...".format(len(train_seg_loader), len(train_cls_loader)))
+        dist_print("epoch:", epoch)
+        dist_print("trainging with {} seg data and cls {} data...".format(len(train_seg_loader), len(train_cls_loader)))
         # Pyten-20201028-AddMPTraining
         train(net, train_seg_loader, train_cls_loader, loss_dict, optimizer, scheduler,logger, epoch, metric_dict, cfg.use_seg, cfg.use_cls, awl, cfg.iters_per_ep, cfg, scaler)
         
         # Pyten-20201019-AddValidation
         if cfg.val:
-            print("validating with {} seg_data and {} cls data...".format(len(val_seg_loader), len(val_cls_loader)))
+            dist_print("validating with {} seg_data and {} cls data...".format(len(val_seg_loader), len(val_cls_loader)))
             val(net, val_seg_loader, val_cls_loader, loss_dict, scheduler, logger, epoch, metric_dict, cfg.use_seg, cfg.use_cls, awl, cfg, scaler)
         
         save_model(net, optimizer, epoch ,work_dir, distributed)
     if cfg.val:
+        dist_print("best metric is got at epoch {}".format(cfg.best_epoch))
         for me_name, me_op in zip(metric_dict['name'], metric_dict['op']):
-            print(me_name, me_op.get())
+            dist_print(me_name, me_op.get())
     logger.close()
