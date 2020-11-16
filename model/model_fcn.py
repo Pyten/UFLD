@@ -107,32 +107,32 @@ class parsingNet(torch.nn.Module):
         if self.use_seg:
             # Pyten-20201010-Addheader1
             self.aux_header1 = torch.nn.Sequential(
-                conv_bn_relu(64, 128, kernel_size=3, stride=1, padding=1) if backbone in ['34','18'] else conv_bn_relu(512, 256, kernel_size=3, stride=1, padding=1),
+                conv_bn_relu(64, 128, kernel_size=3, stride=1, padding=1) if backbone in ['34','18'] else conv_bn_relu(256, 256, kernel_size=3, stride=1, padding=1),
                 conv_bn_relu(128,128,3,padding=1) if backbone in ['34','18'] else conv_bn_relu(256, 256, 3, padding=1),
             )
 
             self.aux_header2 = torch.nn.Sequential(
-                conv_bn_relu(128, 256, kernel_size=3, stride=1, padding=1) if backbone in ['34','18'] else conv_bn_relu(1024, 256, kernel_size=3, stride=1, padding=1),
+                conv_bn_relu(128, 256, kernel_size=3, stride=1, padding=1) if backbone in ['34','18'] else conv_bn_relu(512, 256, kernel_size=3, stride=1, padding=1),
                 conv_bn_relu(256, 128, 3,padding=1) if backbone in ['34','18'] else conv_bn_relu(256, 256, 3, padding=1),
                 # Pyten-20201010-Addheader1
                 # conv_bn_relu(128,128,3,padding=1),
                 # conv_bn_relu(128,128,3,padding=1),
             )
             self.aux_header3 = torch.nn.Sequential(
-                conv_bn_relu(256, 256, kernel_size=3, stride=1, padding=1) if backbone in ['34','18'] else conv_bn_relu(1536, 512, kernel_size=3, stride=1, padding=1),
-                conv_bn_relu(256,128,3,padding=1) if backbone in ['34','18'] else conv_bn_relu(512, 512, 3, padding=1),
+                conv_bn_relu(256, 256, kernel_size=3, stride=1, padding=1) if backbone in ['34','18'] else conv_bn_relu(1024, 512, kernel_size=3, stride=1, padding=1),
+                conv_bn_relu(256,128,3,padding=1) if backbone in ['34','18'] else conv_bn_relu(512, 256, 3, padding=1),
                 # Pyten-20201010-Addheader1
                 # onv_bn_relu(128,128,3,padding=1),
             )
             self.aux_header4 = torch.nn.Sequential(
                 conv_bn_relu(512, 256, kernel_size=3, stride=1, padding=1) if backbone in ['34','18'] else conv_bn_relu(2048, 1024, kernel_size=3, stride=1, padding=1),
-                conv_bn_relu(256,128,3,padding=1),
+                conv_bn_relu(256,128,3,padding=1) if backbone in ['34','18'] else conv_bn_relu(1024, 256, kernel_size=3, stride=1, padding=1),
             )
             self.aux_combine = torch.nn.Sequential(
                 # Pyten-20201010-Addheader1
-                conv_bn_relu(384, 256, 3,padding=2,dilation=2),
+                conv_bn_relu(384, 256, 3,padding=2,dilation=2) if backbone in ['34','18'] else conv_bn_relu(768, 256, kernel_size=3, stride=1, padding=1),
                 # conv_bn_relu(512, 256, 3,padding=2,dilation=2),
-                conv_bn_relu(256, 256, 3,padding=2,dilation=2),
+                conv_bn_relu(256, 256, 3,padding=2,dilation=2) if backbone in ['34','18'] else conv_bn_relu(256, 256, kernel_size=3, stride=1, padding=1),
                 # conv_bn_relu(128, 128, 3,padding=2,dilation=2),
                 # conv_bn_relu(128, 128, 3,padding=4,dilation=4),
                 #  Pyten-20201010-ChagneClassNum
@@ -159,6 +159,8 @@ class parsingNet(torch.nn.Module):
                 # torch.nn.Linear(1800, 2048),
                 # size_h * size_w / (32*32) * 8 
                 torch.nn.Linear(int(self.h * self.w / 128), 2048),
+                # Pyten-20201011-AddDropOut
+                # torch.nn.Dropout(p=0.3),
                 torch.nn.ReLU(),
                 torch.nn.Linear(2048, self.total_dim),
             )
